@@ -24,6 +24,7 @@ interface MessagePopupProps {
   }
   onClose: () => void
   onMinimize: () => void
+  onCall?: (type: 'audio' | 'video') => void
   position?: { x: number; y: number }
 }
 

@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { InputHTMLAttributes } from 'react'
 import clsx from 'clsx'
 
@@ -17,7 +16,7 @@ export function AppleInput({ label, error, className, ...props }: AppleInputProp
           {label}
         </label>
       )}
-      <motion.input
+      <input
         className={clsx(
           'w-full px-4 py-3 rounded-apple',
           'bg-apple-gray-50 dark:bg-apple-gray-900',
@@ -26,11 +25,10 @@ export function AppleInput({ label, error, className, ...props }: AppleInputProp
           'focus:outline-none focus:ring-2 focus:ring-apple-gray-400 dark:focus:ring-apple-gray-600',
           'focus:border-transparent',
           'transition-all duration-200',
+          'focus:scale-[1.01]',
           error && 'border-red-500 dark:border-red-500',
           className
         )}
-        whileFocus={{ scale: 1.01 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         {...props}
       />
       {error && (
