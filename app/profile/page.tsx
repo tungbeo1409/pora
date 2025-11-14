@@ -24,6 +24,7 @@ const userPosts = [
   {
     id: 1,
     author: {
+      id: 1,
       name: 'Nguyễn Văn A',
       username: '@nguyenvana',
       avatar: 'https://i.pravatar.cc/150?img=5',
@@ -40,6 +41,7 @@ const userPosts = [
   {
     id: 2,
     author: {
+      id: 1,
       name: 'Nguyễn Văn A',
       username: '@nguyenvana',
       avatar: 'https://i.pravatar.cc/150?img=5',

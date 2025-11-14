@@ -18,6 +18,7 @@ const trendingPosts = [
   {
     id: 1,
     author: {
+      id: 1,
       name: 'Nguyễn Văn A',
       username: '@nguyenvana',
       avatar: 'https://i.pravatar.cc/150?img=1',
@@ -34,6 +35,7 @@ const trendingPosts = [
   {
     id: 2,
     author: {
+      id: 2,
       name: 'Trần Thị B',
       username: '@tranthib',
       avatar: 'https://i.pravatar.cc/150?img=2',
