@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
+  basePath: '/pora',
+  assetPrefix: '/pora',
   images: {
     unoptimized: true,
     remotePatterns: [
