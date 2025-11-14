@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-apple-gray-200 dark:border-apple-gray-800;
+  }
+  
+  body {
+    @apply bg-white dark:bg-black text-apple-gray-900 dark:text-apple-gray-100;
+    @apply font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/80 dark:bg-apple-gray-900/80 backdrop-blur-apple;
+    @apply border border-apple-gray-200/50 dark:border-apple-gray-800/50;
+  }
+  
+  .glass-strong {
+    @apply bg-white/95 dark:bg-apple-gray-900/95 backdrop-blur-apple;
+    @apply border border-apple-gray-200/80 dark:border-apple-gray-800/80;
+  }
+  
+  .text-apple-primary {
+    @apply text-apple-gray-900 dark:text-apple-gray-100;
+  }
+  
+  .text-apple-secondary {
+    @apply text-apple-gray-600 dark:text-apple-gray-400;
+  }
+  
+  .text-apple-tertiary {
+    @apply text-apple-gray-500 dark:text-apple-gray-500;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
