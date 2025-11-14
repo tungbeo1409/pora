@@ -34,20 +34,17 @@ export function Sidebar() {
 
             return (
               <Link key={item.href} href={item.href}>
-                <motion.div
+                <div
                   className={clsx(
                     'flex items-center space-x-3 px-4 py-3 rounded-apple transition-all duration-200',
                     isActive
                       ? 'bg-apple-gray-100 dark:bg-apple-gray-800 text-apple-gray-900 dark:text-white'
                       : 'text-apple-secondary hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900'
                   )}
-                  whileHover={{ x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 >
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
-                </motion.div>
+                </div>
               </Link>
             )
           })}

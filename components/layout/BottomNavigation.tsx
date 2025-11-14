@@ -34,16 +34,13 @@ export function BottomNavigation() {
 
           return (
             <Link key={item.href} href={item.href} className="flex-1 max-w-[20%] min-w-0">
-              <motion.div
+              <div
                 className={clsx(
                   'flex flex-col items-center justify-center h-full rounded-apple transition-all duration-200 py-1.5',
                   isActive
                     ? 'text-blue-500'
                     : 'text-apple-tertiary'
                 )}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               >
                 <div className="relative mb-1">
                   <Icon className={clsx('w-5 h-5 flex-shrink-0', isActive && 'text-blue-500')} />
@@ -58,7 +55,7 @@ export function BottomNavigation() {
                 <span className={clsx('text-[10px] font-medium truncate w-full text-center px-0.5', isActive && 'text-blue-500')}>
                   {item.label}
                 </span>
-              </motion.div>
+              </div>
             </Link>
           )
         })}

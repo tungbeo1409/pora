@@ -40,11 +40,9 @@ export function RightSidebar() {
         </div>
         <div className="space-y-3">
           {suggestedUsers.map((user) => (
-            <motion.div
+            <div
               key={user.id}
-              className="flex items-center justify-between"
-              whileHover={{ x: 2 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="flex items-center justify-between transition-colors duration-200 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 rounded-apple p-2 -m-2"
             >
               <div className="flex items-center space-x-3">
                 <Avatar src={user.avatar} size="sm" />
@@ -56,7 +54,7 @@ export function RightSidebar() {
               <AppleButton size="sm" variant="secondary">
                 Theo dõi
               </AppleButton>
-            </motion.div>
+            </div>
           ))}
         </div>
       </motion.div>
@@ -74,19 +72,17 @@ export function RightSidebar() {
         </div>
         <div className="space-y-3">
           {trendingTopics.map((topic, index) => (
-            <motion.div
+            <div
               key={topic.tag}
-              className="flex items-center justify-between cursor-pointer group"
-              whileHover={{ x: 2 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="flex items-center justify-between cursor-pointer group transition-colors duration-200 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 rounded-apple p-2 -m-2"
             >
               <div>
-                <p className="text-sm font-medium text-apple-primary group-hover:text-apple-gray-900 dark:group-hover:text-white transition-colors">
+                <p className="text-sm font-medium text-apple-primary group-hover:text-apple-gray-900 dark:group-hover:text-white transition-colors duration-200">
                   {topic.tag}
                 </p>
                 <p className="text-xs text-apple-tertiary">{topic.posts} bài viết</p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </motion.div>
