@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 
 interface VideoCallModalProps {
   user: {
-    id: number
+    id: string | number
     name: string
     username: string
     avatar: string
@@ -124,7 +124,7 @@ export function VideoCallModal({ user, onClose, onAccept, incoming = false }: Vi
             >
               <div className="w-full h-full flex items-center justify-center bg-apple-gray-800">
                 <div className="text-center">
-                  <Avatar src="https://i.pravatar.cc/150?img=5" size="md" />
+                  <Avatar src="" size="md" />
                   <p className="text-white text-xs mt-2">Bạn</p>
                 </div>
               </div>

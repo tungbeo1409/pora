@@ -1,68 +1,84 @@
 'use client'
 
 import { GlobalLayout } from '@/components/layout/GlobalLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AppleCard } from '@/components/ui/AppleCard'
 import { AppleInput } from '@/components/ui/AppleInput'
 import { AppleButton } from '@/components/ui/AppleButton'
 import { ChevronRight, Bell, Lock, Shield, Palette, Globe, User } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useState } from 'react'
-
-const settingsSections = [
-  {
-    title: 'Tài khoản',
-    icon: User,
-    items: [
-      { label: 'Thông tin cá nhân', href: '/settings/profile' },
-      { label: 'Bảo mật', href: '/settings/security' },
-      { label: 'Quyền riêng tư', href: '/settings/privacy' },
-    ],
-  },
-  {
-    title: 'Thông báo',
-    icon: Bell,
-    items: [
-      { label: 'Thông báo đẩy', href: '/settings/notifications' },
-      { label: 'Email', href: '/settings/email' },
-      { label: 'Tin nhắn', href: '/settings/messages' },
-    ],
-  },
-  {
-    title: 'Bảo mật',
-    icon: Shield,
-    items: [
-      { label: 'Mật khẩu', href: '/settings/password' },
-      { label: 'Xác thực hai yếu tố', href: '/settings/2fa' },
-      { label: 'Hoạt động đăng nhập', href: '/settings/activity' },
-    ],
-  },
-  {
-    title: 'Giao diện',
-    icon: Palette,
-    items: [
-      { label: 'Chủ đề', href: '/settings/theme' },
-      { label: 'Ngôn ngữ', href: '/settings/language' },
-      { label: 'Kích thước chữ', href: '/settings/font' },
-    ],
-  },
-  {
-    title: 'Khác',
-    icon: Globe,
-    items: [
-      { label: 'Trợ giúp', href: '/settings/help' },
-      { label: 'Về chúng tôi', href: '/settings/about' },
-      { label: 'Đăng xuất', href: '/logout', danger: true },
-    ],
-  },
-]
+import { useRouter } from 'next/navigation'
+import { authService } from '@/lib/firebase/services/authService'
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
   const [notifications, setNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(true)
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await authService.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Still redirect to login even if error
+      router.push('/login')
+    }
+  }
+
+  const settingsSections = [
+    {
+      title: 'Tài khoản',
+      icon: User,
+      items: [
+        { label: 'Thông tin cá nhân', href: '/settings/profile' },
+        { label: 'Bảo mật', href: '/settings/security' },
+        { label: 'Quyền riêng tư', href: '/settings/privacy' },
+      ],
+    },
+    {
+      title: 'Thông báo',
+      icon: Bell,
+      items: [
+        { label: 'Thông báo đẩy', href: '/settings/notifications' },
+        { label: 'Email', href: '/settings/email' },
+        { label: 'Tin nhắn', href: '/settings/messages' },
+      ],
+    },
+    {
+      title: 'Bảo mật',
+      icon: Shield,
+      items: [
+        { label: 'Mật khẩu', href: '/settings/password' },
+        { label: 'Xác thực hai yếu tố', href: '/settings/2fa' },
+        { label: 'Hoạt động đăng nhập', href: '/settings/activity' },
+      ],
+    },
+    {
+      title: 'Giao diện',
+      icon: Palette,
+      items: [
+        { label: 'Chủ đề', href: '/settings/theme' },
+        { label: 'Ngôn ngữ', href: '/settings/language' },
+        { label: 'Kích thước chữ', href: '/settings/font' },
+      ],
+    },
+    {
+      title: 'Khác',
+      icon: Globe,
+      items: [
+        { label: 'Trợ giúp', href: '/settings/help' },
+        { label: 'Về chúng tôi', href: '/settings/about' },
+        { label: 'Đăng xuất', onClick: handleLogout, danger: true },
+      ],
+    },
+  ]
 
   return (
-    <GlobalLayout>
+    <ProtectedRoute>
+      <GlobalLayout>
       <div className="max-w-4xl mx-auto">
         <div>
           <AppleCard className="p-6 mb-6">
@@ -84,20 +100,28 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="divide-y divide-apple-gray-200 dark:divide-apple-gray-800">
-                    {section.items.map((item) => (
-                      <a
-                        key={item.label}
-                        href={item.href}
-                        className={`flex items-center justify-between p-4 transition-colors ${
-                          item.danger
-                            ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
-                            : 'text-apple-primary hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900'
-                        }`}
-                      >
-                        <span className="font-medium">{item.label}</span>
-                        <ChevronRight className="w-5 h-5 text-apple-tertiary" />
-                      </a>
-                    ))}
+                    {section.items.map((item) => {
+                      const isLink = 'href' in item
+                      const Component = isLink ? 'a' : 'button'
+                      const props = isLink 
+                        ? { href: item.href } 
+                        : { onClick: item.onClick, type: 'button' as const }
+                      
+                      return (
+                        <Component
+                          key={item.label}
+                          {...props}
+                          className={`w-full flex items-center justify-between p-4 transition-colors ${
+                            item.danger
+                              ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                              : 'text-apple-primary hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900'
+                          }`}
+                        >
+                          <span className="font-medium">{item.label}</span>
+                          {isLink && <ChevronRight className="w-5 h-5 text-apple-tertiary" />}
+                        </Component>
+                      )
+                    })}
                   </div>
                 </AppleCard>
               </div>
@@ -156,7 +180,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </GlobalLayout>
+      </GlobalLayout>
+    </ProtectedRoute>
   )
 }
 

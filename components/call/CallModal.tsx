@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 
 interface CallModalProps {
   user: {
-    id: number
+    id: string | number
     name: string
     username: string
     avatar: string

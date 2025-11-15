@@ -50,7 +50,7 @@ export function CommentSection({ comments: initialComments, postId, showComments
         id: 1,
         name: 'Bạn',
         username: '@ban',
-        avatar: 'https://i.pravatar.cc/150?img=5',
+        avatar: '',
       },
       content: newComment,
       timeAgo: 'Vừa xong',

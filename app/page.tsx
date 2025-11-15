@@ -5,74 +5,15 @@ import { PostCard } from '@/components/post/PostCard'
 import { Story } from '@/components/story/Story'
 import { AppleCard } from '@/components/ui/AppleCard'
 import { AppleButton } from '@/components/ui/AppleButton'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Plus, Image as ImageIcon, Video, Smile, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const stories = [
-  { id: 1, user: { name: 'Bạn', avatar: '' }, isOwn: true },
-        { id: 2, user: { name: 'Nguyễn Văn A', avatar: 'https://i.pravatar.cc/150?img=1' } },
-        { id: 3, user: { name: 'Trần Thị B', avatar: 'https://i.pravatar.cc/150?img=2' } },
-        { id: 4, user: { name: 'Lê Văn C', avatar: 'https://i.pravatar.cc/150?img=3' } },
-        { id: 5, user: { name: 'Phạm Thị D', avatar: 'https://i.pravatar.cc/150?img=4' } },
-]
+const stories: any[] = []
 
-const posts = [
-  {
-    id: 1,
-    author: {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      username: '@nguyenvana',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-    },
-    content: 'Chào buổi sáng! Hôm nay trời đẹp quá. Mọi người có kế hoạch gì cho cuối tuần không? 🌞',
-    image: 'https://picsum.photos/600/400?random=1',
-    likes: 245,
-    comments: 32,
-    shares: 12,
-    timeAgo: '2 giờ trước',
-    liked: false,
-    saved: false,
-    isOwn: false,
-  },
-  {
-    id: 2,
-    author: {
-      id: 2,
-      name: 'Trần Thị B',
-      username: '@tranthib',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-    },
-    content: 'Vừa hoàn thành một dự án mới! Cảm thấy rất tự hào về thành quả này. Cảm ơn team đã hỗ trợ! 💪',
-    likes: 189,
-    comments: 28,
-    shares: 8,
-    timeAgo: '5 giờ trước',
-    liked: true,
-    saved: false,
-    isOwn: false,
-  },
-  {
-    id: 3,
-    author: {
-      id: 3,
-      name: 'Lê Văn C',
-      username: '@levanc',
-      avatar: 'https://i.pravatar.cc/150?img=3',
-    },
-    content: 'Một ngày làm việc hiệu quả! Productivity hôm nay đạt mức cao nhất. Có ai muốn chia sẻ tips không?',
-    image: 'https://picsum.photos/600/400?random=2',
-    likes: 156,
-    comments: 19,
-    shares: 5,
-    timeAgo: '8 giờ trước',
-    liked: false,
-    saved: true,
-    isOwn: false,
-  },
-]
+const posts: any[] = []
 
 export default function HomePage() {
   const [createPostOpen, setCreatePostOpen] = useState(false)
@@ -91,18 +32,21 @@ export default function HomePage() {
   }
 
   return (
-    <GlobalLayout>
-      <div className="max-w-4xl mx-auto w-full">
+    <ProtectedRoute>
+      <GlobalLayout>
+        <div className="max-w-4xl mx-auto w-full">
         {/* Stories */}
-        <div className="mb-6">
-          <AppleCard className="p-4">
-            <div className="flex space-x-4 overflow-x-auto scrollbar-hide">
-              {stories.map((story) => (
-                <Story key={story.id} {...story} />
-              ))}
-            </div>
-          </AppleCard>
-        </div>
+        {stories.length > 0 && (
+          <div className="mb-6">
+            <AppleCard className="p-4">
+              <div className="flex space-x-4 overflow-x-auto scrollbar-hide">
+                {stories.map((story) => (
+                  <Story key={story.id} {...story} />
+                ))}
+              </div>
+            </AppleCard>
+          </div>
+        )}
 
         {/* Create Post */}
         <div className="mb-6">
@@ -142,19 +86,25 @@ export default function HomePage() {
         </div>
 
         {/* Posts */}
-        <div className="space-y-4">
-          {posts.map((post, index) => {
-            // Đánh dấu post đầu tiên có image là priority để tối ưu LCP
-            const isPriority = index === 0 && !!post.image
-            return (
-              <PostCard 
-                key={post.id} 
-                post={post} 
-                priority={isPriority}
-              />
-            )
-          })}
-        </div>
+        {posts.length > 0 ? (
+          <div className="space-y-4">
+            {posts.map((post, index) => {
+              // Đánh dấu post đầu tiên có image là priority để tối ưu LCP
+              const isPriority = index === 0 && !!post.image
+              return (
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  priority={isPriority}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <AppleCard className="p-6 text-center">
+            <p className="text-apple-secondary">Chưa có bài viết nào. Hãy tạo bài viết đầu tiên của bạn!</p>
+          </AppleCard>
+        )}
       </div>
 
       {/* Create Post Modal */}
@@ -185,7 +135,7 @@ export default function HomePage() {
             </div>
             
             <div className="flex items-center space-x-3 mb-4">
-              <Avatar src="https://i.pravatar.cc/150?img=5" size="md" />
+              <Avatar src="" size="md" />
               <div>
                 <p className="font-semibold text-apple-primary">Bạn</p>
                 <p className="text-sm text-apple-tertiary">@ban</p>
@@ -235,7 +185,8 @@ export default function HomePage() {
           </motion.div>
         </motion.div>
       )}
-    </GlobalLayout>
+      </GlobalLayout>
+    </ProtectedRoute>
   )
 }
 

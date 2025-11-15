@@ -1,70 +1,40 @@
 'use client'
 
 import { GlobalLayout } from '@/components/layout/GlobalLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AppleCard } from '@/components/ui/AppleCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { AppleInput } from '@/components/ui/AppleInput'
-import { Send, Plus, Image as ImageIcon, File, Mic, X as XIcon, Edit2, Trash2, Reply, Smile, MoreVertical, Phone, Video } from 'lucide-react'
+import { Send, Plus, Image as ImageIcon, File as FileIcon, Mic, X as XIcon, Edit2, Trash2, Reply, Smile, MoreVertical, Phone, Video, Download, Play, Pause, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { CallModal } from '@/components/call/CallModal'
 import { VideoCallModal } from '@/components/call/VideoCallModal'
+import { useChat, useConversations } from '@/lib/firebase/hooks/useChat'
+import { useAuth } from '@/lib/firebase/hooks/useAuth'
+import { userService } from '@/lib/firebase/services/userService'
+import { useSearchParams } from 'next/navigation'
+import { chatService } from '@/lib/firebase/services/chatService'
+import type { ChatMessage, Conversation } from '@/lib/firebase/services/chatService'
 
-const conversations = [
-  {
-    id: 1,
-    user: {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      username: '@nguyenvana',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      online: true,
-    },
-    lastMessage: 'Cảm ơn bạn đã giúp đỡ!',
-    time: '2 phút trước',
-    unread: 2,
-  },
-  {
-    id: 2,
-    user: {
-      id: 2,
-      name: 'Trần Thị B',
-      username: '@tranthib',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      online: false,
-    },
-    lastMessage: 'Hẹn gặp lại vào tuần sau nhé',
-    time: '1 giờ trước',
-    unread: 0,
-  },
-  {
-    id: 3,
-    user: {
-      id: 3,
-      name: 'Lê Văn C',
-      username: '@levanc',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      online: true,
-    },
-    lastMessage: 'Dự án đang tiến triển tốt',
-    time: '3 giờ trước',
-    unread: 1,
-  },
-]
-
-interface Message {
-  id: number
-  text: string
-  sender: 'me' | 'other'
-  time: string
-  image?: string
-  file?: { name: string; url: string; size: number }
-  voice?: { url: string; duration: number }
-  replyTo?: { id: number; text: string; sender: string }
-  reactions?: { emoji: string; users: string[] }[]
-  isEdited?: boolean
-  isDeleted?: boolean
+// Format last seen time
+function formatLastSeen(lastSeen?: number): string {
+  if (!lastSeen) return 'Offline'
+  
+  const now = Date.now()
+  const diff = now - lastSeen
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  
+  if (seconds < 60) return 'Hoạt động vừa xong'
+  if (minutes < 60) return `Hoạt động ${minutes} phút trước`
+  if (hours < 24) return `Hoạt động ${hours} giờ trước`
+  if (days < 7) return `Hoạt động ${days} ngày trước`
+  
+  return `Hoạt động ${Math.floor(days / 7)} tuần trước`
 }
 
 interface PreviewFile {
@@ -73,54 +43,178 @@ interface PreviewFile {
   preview?: string
 }
 
-const messages: Message[] = [
-  { id: 1, text: 'Xin chào! Bạn có khỏe không?', sender: 'other', time: '10:30' },
-  { id: 2, text: 'Chào bạn! Mình khỏe, cảm ơn bạn đã hỏi thăm.', sender: 'me', time: '10:32' },
-  { id: 3, text: 'Tuyệt vời! Bạn có rảnh để thảo luận về dự án không?', sender: 'other', time: '10:33' },
-  { id: 4, text: '', image: 'https://picsum.photos/400/300?random=1', sender: 'me', time: '10:34' },
-  { id: 5, text: 'Có chứ! Mình đang rảnh. Bạn muốn bắt đầu từ đâu?', sender: 'me', time: '10:35' },
-  { id: 6, text: '', image: 'https://picsum.photos/400/500?random=2', sender: 'other', time: '10:36' },
-  { id: 7, text: 'Đây là ảnh từ chuyến đi cuối tuần!', sender: 'other', time: '10:36' },
-  { id: 8, text: 'Cảm ơn bạn đã giúp đỡ!', sender: 'other', time: '10:40' },
-  { id: 9, text: '', image: 'https://picsum.photos/500/400?random=3', sender: 'me', time: '10:42' },
-  { id: 10, text: 'Chia sẻ một bức ảnh đẹp với bạn', sender: 'me', time: '10:42' },
-]
+interface ConversationWithUser extends Conversation {
+  userData?: {
+    id: string
+    name: string
+    username: string
+    avatar: string
+  }
+  isOnline?: boolean
+}
 
-export default function MessagesPage() {
-  const [selectedChat, setSelectedChat] = useState(1)
+function MessagesContent() {
+  const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const userIdParam = searchParams.get('user')
+  
+  // Get conversations list
+  const { conversations, loading: conversationsLoading } = useConversations()
+  const [conversationsWithUser, setConversationsWithUser] = useState<ConversationWithUser[]>([])
+  const [onlineStatuses, setOnlineStatuses] = useState<{ [userId: string]: boolean }>({})
+  
+  // Calculate total unread count
+  const totalUnreadCount = conversationsWithUser.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0)
+  
+  // Get selected conversation
+  const selectedConversationId = searchParams.get('conversation')
+  const selectedUserId = userIdParam || (selectedConversationId 
+    ? conversations.find((c) => c.id === selectedConversationId)?.userId 
+    : null)
+  
+  // Get messages for selected conversation
+  const { 
+    messages: chatMessages, 
+    loading: messagesLoading, 
+    sendMessage: sendChatMessage,
+    editMessage: editChatMessage,
+    deleteMessage: deleteChatMessage,
+    addReaction: addChatReaction,
+    markAsRead,
+    typing: isTyping,
+    isOnline,
+    lastSeen,
+    setTyping: updateTypingStatus,
+  } = useChat(selectedUserId || null, { limitCount: 50, realtime: true })
+  
   const [message, setMessage] = useState('')
-  const [chatMessages, setChatMessages] = useState<Message[]>(messages)
-  const [typing, setTyping] = useState(false)
+  const [selectedChat, setSelectedChat] = useState<string | null>(selectedConversationId || selectedUserId || null)
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([])
   const [attachDropdownOpen, setAttachDropdownOpen] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null)
-  const [messageMenuOpen, setMessageMenuOpen] = useState<number | null>(null)
-  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [recordedAudio, setRecordedAudio] = useState<{ blob: Blob; duration: number } | null>(null)
+  const recordingStreamRef = useRef<MediaStream | null>(null)
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
+  const [messageMenuOpen, setMessageMenuOpen] = useState<string | null>(null)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
-  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
-  const [reactionPickerOpen, setReactionPickerOpen] = useState<number | null>(null)
-  const [timeTooltip, setTimeTooltip] = useState<{ msgId: number; x: number; y: number; time: string } | null>(null)
-  const [callState, setCallState] = useState<{ type: 'audio' | 'video'; user: typeof conversations[0]['user'] } | null>(null)
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null)
+  const [reactionPickerOpen, setReactionPickerOpen] = useState<string | null>(null)
+  const [timeTooltip, setTimeTooltip] = useState<{ msgId: string; x: number; y: number; time: string } | null>(null)
+  const [callState, setCallState] = useState<{ type: 'audio' | 'video'; user: { id: string; name: string; username: string; avatar: string; online: boolean } } | null>(null)
   const menuCloseTimerRef = useRef<NodeJS.Timeout | null>(null)
   const timeTooltipTimerRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
-  const menuRefs = useRef<Map<number, HTMLDivElement>>(new Map())
-  const reactionPickerRefs = useRef<Map<number, HTMLDivElement>>(new Map())
-  const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const reactionPickerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const onlineStatusUnsubscribes = useRef<Map<string, () => void>>(new Map())
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null)
+  const [voiceProgress, setVoiceProgress] = useState<Map<string, { current: number; duration: number }>>(new Map())
 
   const emojis = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
+  // Fetch user data for conversations
+  useEffect(() => {
+    if (!conversations.length) return
+
+    const fetchUsers = async () => {
+      const userIds = conversations.map((c) => c.userId)
+      const users = await userService.getByIds(userIds)
+      
+      const conversationsWithUsers = conversations.map((conv) => {
+        const userData = users.find((u) => u.id === conv.userId)
+        return {
+          ...conv,
+          userData: userData ? {
+            id: userData.id || '',
+            name: userData.name,
+            username: userData.username,
+            avatar: userData.avatar,
+          } : undefined,
+        }
+      })
+      
+      setConversationsWithUser(conversationsWithUsers)
+
+      // Listen to online status for each user
+      userIds.forEach((userId) => {
+        if (onlineStatusUnsubscribes.current.has(userId)) return
+        
+        const unsubscribe = chatService.listenToOnlineStatus(userId, (isOnline) => {
+          setOnlineStatuses((prev) => ({ ...prev, [userId]: isOnline }))
+        })
+        
+        onlineStatusUnsubscribes.current.set(userId, unsubscribe)
+      })
+    }
+
+    fetchUsers()
+
+    // Cleanup online status listeners
+    return () => {
+      onlineStatusUnsubscribes.current.forEach((unsub) => unsub())
+      onlineStatusUnsubscribes.current.clear()
+    }
+  }, [conversations])
+
+  // Mark as read when viewing conversation
+  useEffect(() => {
+    if (selectedUserId && user?.uid) {
+      markAsRead().catch(console.error)
+    }
+  }, [selectedUserId, user?.uid, markAsRead])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
+  }, [chatMessages, isTyping])
+
+  // Update typing indicator when user types
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastTypingTimeRef = useRef<number>(0)
+  
+  useEffect(() => {
+    // Clear previous timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = null
+    }
+
+    if (message.trim() && selectedUserId) {
+      // Set typing to true immediately when user starts typing
+      const now = Date.now()
+      // Only update if at least 500ms has passed since last update to avoid too many writes
+      if (now - lastTypingTimeRef.current > 500) {
+        updateTypingStatus(true).catch(console.error)
+        lastTypingTimeRef.current = now
+      }
+      
+      // Set typing to false after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        updateTypingStatus(false).catch(console.error)
+        typingTimeoutRef.current = null
+      }, 2000)
+    } else {
+      // Clear typing immediately when message is empty
+      updateTypingStatus(false).catch(console.error)
+      lastTypingTimeRef.current = 0
+    }
+    
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = null
+      }
+    }
+  }, [message, updateTypingStatus, selectedUserId])
 
   // Handle click outside for menu and reaction picker
   useEffect(() => {
@@ -132,10 +226,13 @@ export default function MessagesPage() {
         const menuRef = menuRefs.current.get(messageMenuOpen)
         if (menuRef && !menuRef.contains(target)) {
           // Kiểm tra xem có phải click vào reaction picker không
-          const reactionPickerRef = reactionPickerRefs.current.get(reactionPickerOpen || -1)
-          if (!reactionPickerRef || !reactionPickerRef.contains(target)) {
-            setMessageMenuOpen(null)
+          if (reactionPickerOpen !== null) {
+            const reactionPickerRef = reactionPickerRefs.current.get(reactionPickerOpen)
+            if (reactionPickerRef && reactionPickerRef.contains(target)) {
+              return // Don't close menu if clicking on reaction picker
+            }
           }
+          setMessageMenuOpen(null)
         }
       }
       
@@ -144,10 +241,13 @@ export default function MessagesPage() {
         const reactionPickerRef = reactionPickerRefs.current.get(reactionPickerOpen)
         if (reactionPickerRef && !reactionPickerRef.contains(target)) {
           // Kiểm tra xem có phải click vào menu không
-          const menuRef = menuRefs.current.get(messageMenuOpen || -1)
-          if (!menuRef || !menuRef.contains(target)) {
-            setReactionPickerOpen(null)
+          if (messageMenuOpen !== null) {
+            const menuRef = menuRefs.current.get(messageMenuOpen)
+            if (menuRef && menuRef.contains(target)) {
+              return // Don't close reaction picker if clicking on menu
+            }
           }
+          setReactionPickerOpen(null)
         }
       }
     }
@@ -165,49 +265,117 @@ export default function MessagesPage() {
   }, [messageMenuOpen, reactionPickerOpen])
 
   return (
-    <GlobalLayout>
-      <div className="max-w-6xl mx-auto">
+    <ProtectedRoute>
+      <GlobalLayout>
+        <div className="max-w-6xl mx-auto">
         <AppleCard className="p-0 overflow-hidden">
           <div className="flex h-[calc(100vh-12rem)]">
             {/* Conversations List */}
             <div className="w-full md:w-80 border-r border-apple-gray-200 dark:border-apple-gray-800 overflow-y-auto">
               <div className="p-4 border-b border-apple-gray-200 dark:border-apple-gray-800">
-                <h2 className="text-xl font-semibold text-apple-primary">Tin nhắn</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-apple-primary">Tin nhắn</h2>
+                  {totalUnreadCount > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-xs font-medium">
+                      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="divide-y divide-apple-gray-200 dark:divide-apple-gray-800">
-                {conversations.map((conversation) => (
-                  <motion.div
-                    key={conversation.id}
-                    className={`p-4 cursor-pointer transition-colors ${
-                      selectedChat === conversation.id
-                        ? 'bg-apple-gray-100 dark:bg-apple-gray-800'
-                        : 'hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900'
-                    }`}
-                    onClick={() => setSelectedChat(conversation.id)}
-                    whileHover={{ x: 2 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Avatar src={conversation.user.avatar} size="md" online={conversation.user.online} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-semibold text-sm text-apple-primary truncate">
-                            {conversation.user.name}
-                          </p>
-                          <span className="text-xs text-apple-tertiary">{conversation.time}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-apple-secondary truncate">{conversation.lastMessage}</p>
-                          {conversation.unread > 0 && (
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-medium">
-                              {conversation.unread}
-                            </span>
-                          )}
+                {conversationsLoading ? (
+                  <div className="p-8 text-center">
+                    <p className="text-apple-secondary">Đang tải...</p>
+                  </div>
+                ) : conversationsWithUser.length > 0 ? (
+                  conversationsWithUser
+                    .sort((a, b) => {
+                      // Sort by lastMessageTime (newest first), then by unreadCount
+                      const timeA = a.lastMessageTime || 0
+                      const timeB = b.lastMessageTime || 0
+                      if (timeB !== timeA) {
+                        return timeB - timeA
+                      }
+                      // If same time, prioritize unread messages
+                      return (b.unreadCount || 0) - (a.unreadCount || 0)
+                    })
+                    .map((conversation) => {
+                  const isOnline = onlineStatuses[conversation.userId] ?? false
+                  
+                  // Format last message preview
+                  let lastMessageText = 'Chưa có tin nhắn'
+                  if (conversation.lastMessage) {
+                    const lastMsg = conversation.lastMessage
+                    if (lastMsg.imageUrl) {
+                      lastMessageText = '📷 Ảnh'
+                    } else if (lastMsg.voiceUrl) {
+                      lastMessageText = '🎤 Tin nhắn thoại'
+                    } else if (lastMsg.fileUrl) {
+                      lastMessageText = `📎 ${lastMsg.fileName || 'File'}`
+                    } else if (lastMsg.text) {
+                      lastMessageText = lastMsg.text
+                    }
+                  }
+                  
+                  const lastMessageTime = conversation.lastMessageTime 
+                    ? new Date(conversation.lastMessageTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                    : ''
+                  
+                  return (
+                    <motion.div
+                      key={conversation.id}
+                      className={`p-4 cursor-pointer transition-colors ${
+                        selectedChat === conversation.id
+                          ? 'bg-apple-gray-100 dark:bg-apple-gray-800'
+                          : 'hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900'
+                      }`}
+                      onClick={() => {
+                        setSelectedChat(conversation.id)
+                        window.history.pushState({}, '', `/messages?conversation=${conversation.id}`)
+                      }}
+                      whileHover={{ x: 2 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Avatar 
+                          src={conversation.userData?.avatar || ''} 
+                          size="md" 
+                          online={isOnline} 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className={`font-semibold text-sm truncate ${conversation.unreadCount > 0 ? 'text-apple-primary font-bold' : 'text-apple-primary'}`}>
+                              {conversation.userData?.name || 'Người dùng'}
+                            </p>
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                              {conversation.unreadCount > 0 && (
+                                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                              )}
+                              <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-apple-primary font-semibold' : 'text-apple-tertiary'}`}>
+                                {lastMessageTime}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-sm truncate ${conversation.unreadCount > 0 ? 'text-apple-primary font-medium' : 'text-apple-secondary'}`}>
+                              {lastMessageText}
+                            </p>
+                            {conversation.unreadCount > 0 && (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-semibold flex-shrink-0 min-w-[20px] text-center">
+                                {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  )
+                    })
+                ) : (
+                  <div className="p-8 text-center">
+                    <p className="text-apple-secondary">Chưa có cuộc trò chuyện nào</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -217,30 +385,53 @@ export default function MessagesPage() {
               <div className="p-4 border-b border-apple-gray-200 dark:border-apple-gray-800">
                 <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <Avatar
-                    src={conversations.find((c) => c.id === selectedChat)?.user.avatar || ''}
-                    size="md"
-                    online={conversations.find((c) => c.id === selectedChat)?.user.online}
-                  />
-                  <div>
-                    <p className="font-semibold text-apple-primary">
-                      {conversations.find((c) => c.id === selectedChat)?.user.name}
-                    </p>
-                    <p className="text-sm text-apple-tertiary">
-                      {conversations.find((c) => c.id === selectedChat)?.user.online ? 'Đang hoạt động' : 'Offline'}
-                    </p>
+                  {(() => {
+                    const selectedConv = conversationsWithUser.find((c) => c.id === selectedChat || c.userId === selectedUserId)
+                    const isOnline = selectedConv?.userId ? onlineStatuses[selectedConv.userId] ?? false : false
+                    return (
+                      <>
+                        <Avatar
+                          src={selectedConv?.userData?.avatar || ''}
+                          size="md"
+                          online={isOnline}
+                        />
+                        <div>
+                          <p className="font-semibold text-apple-primary">
+                            {selectedConv?.userData?.name || 'Người dùng'}
+                          </p>
+                          <p className="text-sm text-apple-tertiary">
+                            {isTyping ? 'Đang nhập...' : (isOnline ? 'Đang hoạt động' : formatLastSeen(lastSeen))}
+                          </p>
+                        </div>
+                      </>
+                    )
+                  })()}
                   </div>
-                  </div>
-                  {selectedChat && (() => {
-                    const currentUser = conversations.find((c) => c.id === selectedChat)?.user
+                  {(selectedChat || selectedUserId) && (() => {
+                    const selectedConv = conversationsWithUser.find((c) => c.id === selectedChat || c.userId === selectedUserId)
+                    const currentUser = selectedConv?.userData
                     if (!currentUser) return null
+                    
                     return (
                       <div className="flex items-center space-x-2">
                         <motion.button
                           className="p-2 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => setCallState({ type: 'audio', user: currentUser })}
+                          onClick={() => {
+                            if (currentUser) {
+                              setCallState({ 
+                                type: 'audio', 
+                                user: {
+                                  id: currentUser.id,
+                                  name: currentUser.name,
+                                  username: currentUser.username,
+                                  avatar: currentUser.avatar,
+                                  online: onlineStatuses[selectedConv?.userId || ''] ?? false,
+                                }
+                              })
+                            }
+                          }}
                           title="Gọi điện"
                         >
                           <Phone className="w-5 h-5 text-apple-secondary" />
@@ -249,7 +440,20 @@ export default function MessagesPage() {
                           className="p-2 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => setCallState({ type: 'video', user: currentUser })}
+                          onClick={() => {
+                            if (currentUser) {
+                              setCallState({ 
+                                type: 'video', 
+                                user: {
+                                  id: currentUser.id,
+                                  name: currentUser.name,
+                                  username: currentUser.username,
+                                  avatar: currentUser.avatar,
+                                  online: onlineStatuses[selectedConv?.userId || ''] ?? false,
+                                }
+                              })
+                            }
+                          }}
                           title="Gọi video"
                         >
                           <Video className="w-5 h-5 text-apple-secondary" />
@@ -265,16 +469,32 @@ export default function MessagesPage() {
                 ref={messagesContainerRef}
                 className="flex-1 overflow-y-auto overflow-x-visible p-4 space-y-4 bg-apple-gray-50 dark:bg-apple-gray-900 relative"
               >
-                {chatMessages.map((msg) => {
+                {selectedChat || selectedUserId ? (
+                  messagesLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-apple-secondary">Đang tải tin nhắn...</p>
+                    </div>
+                  ) : chatMessages.length > 0 ? (
+                    [...chatMessages]
+                      .sort((a, b) => {
+                        // Sort by createdAt (oldest first) for display
+                        const timeA = typeof a.createdAt === 'number' ? a.createdAt : parseInt(String(a.createdAt)) || 0
+                        const timeB = typeof b.createdAt === 'number' ? b.createdAt : parseInt(String(b.createdAt)) || 0
+                        return timeA - timeB
+                      })
+                      .map((msg: ChatMessage) => {
                   const isHovered = hoveredMessageId === msg.id
                   const isMenuOpen = messageMenuOpen === msg.id
                   const isEditing = editingMessageId === msg.id
                   const isReactionPickerOpen = reactionPickerOpen === msg.id
-                  const currentUser = conversations.find((c) => c.id === selectedChat)?.user
+                  const isMe = msg.senderId === user?.uid
+                  const messageTime = typeof msg.createdAt === 'number' 
+                    ? new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                    : ''
 
                   return (
                   <motion.div
-                    key={msg.id}
+                    key={`msg-${msg.id}-${msg.createdAt || Date.now()}`}
                     ref={(el) => {
                       if (el) {
                         messageRefs.current.set(msg.id, el)
@@ -282,7 +502,7 @@ export default function MessagesPage() {
                         messageRefs.current.delete(msg.id)
                       }
                     }}
-                      className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} group`}
+                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -300,7 +520,7 @@ export default function MessagesPage() {
                               msgId: msg.id,
                               x: e.clientX,
                               y: e.clientY,
-                              time: msg.time,
+                              time: messageTime,
                             })
                           }
                         }, 500)
@@ -332,60 +552,207 @@ export default function MessagesPage() {
                       }}
                     >
                       {/* Reply Preview */}
-                      {msg.replyTo && (
+                      {msg.replyToText && msg.replyToId && (
                         <div className={`max-w-[50%] px-3 py-1.5 mb-1 rounded-apple text-xs ${
-                          msg.sender === 'me'
+                          isMe
                             ? 'bg-blue-400/20 text-blue-100 border-l-2 border-blue-300'
                             : 'bg-apple-gray-200 dark:bg-apple-gray-700 text-apple-tertiary border-l-2 border-apple-gray-400'
                         }`}>
-                          <p className="font-medium truncate">{msg.replyTo.sender}</p>
-                          <p className="truncate opacity-75 line-clamp-2">{msg.replyTo.text}</p>
+                          <p className="font-medium truncate">{isMe ? 'Bạn' : 'Người khác'}</p>
+                          <p className="truncate opacity-75 line-clamp-2">{msg.replyToText}</p>
                         </div>
                       )}
 
-                      <div className={`relative flex items-center w-full ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`relative flex items-center w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {/* Message Bubble - tối đa 70% chiều rộng */}
                         <div
                           className={`max-w-[70%] px-4 py-2 rounded-apple-lg relative ${
-                        msg.sender === 'me'
+                        isMe
                           ? 'bg-blue-500 text-white rounded-br-sm'
                           : 'bg-white dark:bg-apple-gray-800 text-apple-primary rounded-bl-sm'
                           } ${msg.isDeleted ? 'opacity-50' : ''} ${
-                            (msg.image || msg.voice) ? '!p-0 !bg-transparent dark:!bg-transparent' : ''
+                            (msg.imageUrl || msg.voiceUrl || msg.fileUrl) ? '!p-0 !bg-transparent dark:!bg-transparent !border-0' : ''
                       }`}
                     >
-                          {msg.image && (
+                          {!msg.isDeleted && msg.imageUrl && (
                             <img
-                              src={msg.image}
+                              src={msg.imageUrl}
                               alt="Attachment"
                               className="w-full rounded-apple max-h-64 object-cover"
                             />
                           )}
-                          {msg.file && (
-                            <div className={`flex items-center space-x-2 p-2 bg-black/10 dark:bg-white/10 rounded-apple ${msg.image || msg.voice ? '' : 'mb-2'}`} style={{ border: 'none' }}>
-                              <File className="w-4 h-4" />
+                          {!msg.isDeleted && msg.fileUrl && (
+                            <div className={`flex items-center space-x-2 p-2 bg-black/10 dark:bg-white/10 rounded-apple ${msg.imageUrl || msg.voiceUrl ? '' : 'mb-2'}`}>
+                              <FileIcon className="w-4 h-4 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate">{msg.file.name}</p>
-                                <p className="text-xs opacity-75">
-                                  {(msg.file.size / 1024).toFixed(1)} KB
-                                </p>
+                                <p className="text-xs font-medium truncate">{msg.fileName || 'File'}</p>
+                                {msg.fileSize && (
+                                  <p className="text-xs opacity-75">
+                                    {msg.fileSize < 1024 * 1024 
+                                      ? `${(msg.fileSize / 1024).toFixed(1)} KB`
+                                      : `${(msg.fileSize / (1024 * 1024)).toFixed(2)} MB`}
+                                  </p>
+                                )}
                               </div>
-                            </div>
-                          )}
-                          {msg.voice && (
-                            <div className="flex items-center space-x-2">
-                              <button
-                                className="flex items-center space-x-2 px-3 py-1.5 bg-black/20 dark:bg-white/20 rounded-apple hover:bg-black/30 dark:hover:bg-white/30 transition-colors"
-                                onClick={() => {
-                                  const audio = new Audio(msg.voice!.url)
-                                  audio.play()
+                              <a
+                                href={msg.fileUrl}
+                                download={msg.fileName || 'file'}
+                                className="p-1.5 hover:bg-black/20 dark:hover:bg-white/20 rounded-apple transition-colors flex-shrink-0"
+                                title="Tải xuống"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  // Extract file extension from URL if needed
+                                  let fileName = msg.fileName || 'File'
+                                  if (!fileName || fileName === 'File') {
+                                    // Try to extract from URL
+                                    const url = msg.fileUrl
+                                    if (url && url.startsWith('data:')) {
+                                      const matches = url.match(/data:([^;]+);base64/)
+                                      if (matches) {
+                                        const mimeType = matches[1]
+                                        const ext = mimeType.split('/')[1] || 'bin'
+                                        fileName = `file.${ext}`
+                                      }
+                                    } else if (url) {
+                                      // Cloudinary URL - try to extract original filename
+                                      const urlParts = url.split('/')
+                                      fileName = urlParts[urlParts.length - 1] || 'file'
+                                      // Remove query params if any
+                                      fileName = fileName.split('?')[0]
+                                    }
+                                  }
+                                  
+                                  // If it's a base64 data URL, convert to blob and download
+                                  if (msg.fileUrl && msg.fileUrl.startsWith('data:')) {
+                                    const link = document.createElement('a')
+                                    link.href = msg.fileUrl
+                                    link.download = fileName
+                                    document.body.appendChild(link)
+                                    link.click()
+                                    document.body.removeChild(link)
+                                  } else if (msg.fileUrl) {
+                                    // Cloudinary URL - download directly
+                                    const link = document.createElement('a')
+                                    link.href = msg.fileUrl
+                                    link.download = fileName
+                                    link.target = '_blank'
+                                    document.body.appendChild(link)
+                                    link.click()
+                                    document.body.removeChild(link)
+                                  }
                                 }}
                               >
-                                <Mic className="w-4 h-4" />
-                                <span className="text-xs font-medium">{msg.voice.duration}s</span>
-                              </button>
+                                <Download className="w-4 h-4" />
+                              </a>
                             </div>
                           )}
+                          {!msg.isDeleted && msg.voiceUrl && (() => {
+                            const isPlaying = playingVoiceId === msg.id
+                            const progress = voiceProgress.get(msg.id) || { current: 0, duration: msg.voiceDuration || 0 }
+                            
+                            return (
+                              <div className="flex items-center space-x-3 p-3 bg-black/10 dark:bg-white/10 rounded-apple-lg min-w-[200px] max-w-[280px]">
+                                {/* Play/Pause Button */}
+                                <button
+                                  className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors"
+                                  onClick={() => {
+                                    let audio = audioRefs.current.get(msg.id)
+                                    
+                                    if (!audio) {
+                                      audio = new Audio(msg.voiceUrl!)
+                                      audioRefs.current.set(msg.id, audio)
+                                      
+                                      audio.addEventListener('loadedmetadata', () => {
+                                        setVoiceProgress(prev => {
+                                          const newMap = new Map(prev)
+                                          newMap.set(msg.id, { current: 0, duration: audio!.duration })
+                                          return newMap
+                                        })
+                                      })
+                                      
+                                      audio.addEventListener('timeupdate', () => {
+                                        setVoiceProgress(prev => {
+                                          const newMap = new Map(prev)
+                                          newMap.set(msg.id, { current: audio!.currentTime, duration: audio!.duration || msg.voiceDuration || 0 })
+                                          return newMap
+                                        })
+                                      })
+                                      
+                                      audio.addEventListener('ended', () => {
+                                        setPlayingVoiceId(null)
+                                        setVoiceProgress(prev => {
+                                          const newMap = new Map(prev)
+                                          newMap.set(msg.id, { current: 0, duration: audio!.duration || msg.voiceDuration || 0 })
+                                          return newMap
+                                        })
+                                      })
+                                    }
+                                    
+                                    if (isPlaying) {
+                                      audio.pause()
+                                      setPlayingVoiceId(null)
+                                    } else {
+                                      // Pause other audio if playing
+                                      if (playingVoiceId !== null) {
+                                        const otherAudio = audioRefs.current.get(playingVoiceId)
+                                        if (otherAudio) {
+                                          otherAudio.pause()
+                                          otherAudio.currentTime = 0
+                                        }
+                                      }
+                                      audio.play()
+                                      setPlayingVoiceId(msg.id)
+                                    }
+                                  }}
+                                >
+                                  {isPlaying ? (
+                                    <Pause className="w-5 h-5" fill="currentColor" />
+                                  ) : (
+                                    <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
+                                  )}
+                                </button>
+                                
+                                {/* Progress Bar & Time */}
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  {/* Progress Bar */}
+                                  <div className="relative">
+                                    <div className="h-1.5 bg-black/20 dark:bg-white/20 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-blue-500 rounded-full transition-all"
+                                        style={{ width: `${progress.duration > 0 ? (progress.current / progress.duration) * 100 : 0}%` }}
+                                      />
+                                    </div>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max={progress.duration || msg.voiceDuration || 0}
+                                      value={progress.current}
+                                      step="0.1"
+                                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                      onChange={(e) => {
+                                        const audio = audioRefs.current.get(msg.id)
+                                        if (audio) {
+                                          const newTime = parseFloat(e.target.value)
+                                          audio.currentTime = newTime
+                                          setVoiceProgress(prev => {
+                                            const newMap = new Map(prev)
+                                            newMap.set(msg.id, { current: newTime, duration: progress.duration })
+                                            return newMap
+                                          })
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  {/* Time Display */}
+                                  <div className="flex items-center justify-between text-xs text-apple-tertiary">
+                                    <span>{Math.floor(progress.current)}s</span>
+                                    <span>{Math.floor(progress.duration || msg.voiceDuration || 0)}s</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })()}
                           {msg.isDeleted ? (
                             <p className="text-sm italic opacity-75">Tin nhắn đã được thu hồi</p>
                           ) : isEditing ? (
@@ -394,13 +761,15 @@ export default function MessagesPage() {
                                 type="text"
                                 value={editText}
                                 onChange={(e) => setEditText(e.target.value)}
-                                onKeyPress={(e) => {
+                                onKeyPress={async (e) => {
                                   if (e.key === 'Enter' && editText.trim()) {
-                                    setChatMessages(chatMessages.map(m => 
-                                      m.id === msg.id ? { ...m, text: editText, isEdited: true } : m
-                                    ))
-                                    setEditingMessageId(null)
-                                    setEditText('')
+                                    try {
+                                      await editChatMessage(msg.id, editText)
+                                      setEditingMessageId(null)
+                                      setEditText('')
+                                    } catch (error) {
+                                      console.error('Error editing message:', error)
+                                    }
                                   }
                                   if (e.key === 'Escape') {
                                     setEditingMessageId(null)
@@ -423,11 +792,11 @@ export default function MessagesPage() {
                           )}
 
                           {/* Reactions */}
-                          {msg.reactions && msg.reactions.length > 0 && (
+                          {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                              {msg.reactions.map((reaction, idx) => (
+                              {Object.entries(msg.reactions).map(([emoji, userIds], idx) => (
                                 <motion.button
-                                  key={`${msg.id}-${reaction.emoji}-${idx}`}
+                                  key={`${msg.id}-${emoji}-${idx}`}
                                   initial={{ scale: 0, rotate: -180, y: -20 }}
                                   animate={{ scale: 1, rotate: 0, y: 0 }}
                                   transition={{ 
@@ -438,6 +807,9 @@ export default function MessagesPage() {
                                   }}
                                   whileHover={{ scale: 1.1, rotate: 5 }}
                                   whileTap={{ scale: 0.9 }}
+                                  onClick={async () => {
+                                    await addChatReaction(msg.id, emoji)
+                                  }}
                                   className="px-2 py-0.5 bg-black/20 dark:bg-white/20 rounded-full text-xs flex items-center space-x-1 hover:bg-black/30 dark:hover:bg-white/30 transition-colors"
                                 >
                                   <motion.span
@@ -449,9 +821,9 @@ export default function MessagesPage() {
                                       delay: idx * 0.03
                                     }}
                                   >
-                                    {reaction.emoji}
+                                    {emoji}
                                   </motion.span>
-                                  <span className="opacity-75">{reaction.users.length}</span>
+                                  <span className="opacity-75">{userIds.length}</span>
                                 </motion.button>
                               ))}
                             </div>
@@ -461,7 +833,7 @@ export default function MessagesPage() {
                           {msg.isEdited && !msg.isDeleted && (
                             <Edit2 
                               className={`absolute w-3 h-3 opacity-60 pointer-events-none ${
-                                msg.sender === 'me' 
+                                isMe 
                                   ? 'bottom-1 right-1 text-white' 
                                   : 'bottom-1 left-1 text-apple-tertiary'
                               }`}
@@ -472,7 +844,7 @@ export default function MessagesPage() {
                         {/* Menu - hiển thị bên cạnh message bubble */}
                         {isHovered && !msg.isDeleted && (
                           <div className={`flex items-center flex-shrink-0 z-20 ${
-                            msg.sender === 'me' ? 'order-first mr-5' : 'ml-5'
+                            isMe ? 'order-first mr-5' : 'ml-5'
                           }`}>
                             <div
                               className="relative"
@@ -491,7 +863,7 @@ export default function MessagesPage() {
                                 }}
                                 className="p-1.5 rounded-apple glass-strong hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors shadow-apple"
                               >
-                                <MoreVertical className={`w-4 h-4 ${msg.sender === 'me' ? 'text-blue-100' : 'text-apple-secondary'}`} />
+                                <MoreVertical className={`w-4 h-4 ${isMe ? 'text-blue-100' : 'text-apple-secondary'}`} />
                               </button>
 
                               {/* Menu Dropdown */}
@@ -500,7 +872,7 @@ export default function MessagesPage() {
                                 const messageEl = messageRefs.current.get(msg.id)
                                 const containerEl = messagesContainerRef.current
                                 let verticalPos = 'bottom' // 'top' hoặc 'bottom'
-                                let horizontalPos = msg.sender === 'me' ? 'left' : 'right'
+                                let horizontalPos = isMe ? 'left' : 'right'
                                 
                                 if (messageEl && containerEl) {
                                   const messageRect = messageEl.getBoundingClientRect()
@@ -522,7 +894,7 @@ export default function MessagesPage() {
                                     // Nếu button ở gần phải (từ 70% trở đi) → dropdown hiện trái
                                     // Nếu button ở gần trái (dưới 30%) → dropdown hiện phải
                                     const buttonPositionX = ((buttonLeft - containerLeft) / containerRect.width) * 100
-                                    if (msg.sender === 'me') {
+                                    if (isMe) {
                                       // Tin nhắn của mình: button ở bên phải message
                                       horizontalPos = buttonPositionX > 70 ? 'right' : 'left'
                                     } else {
@@ -534,6 +906,7 @@ export default function MessagesPage() {
                                 
                                 return (
                                   <motion.div
+                                    key={`menu-${msg.id}`}
                                     initial={{ opacity: 0, y: verticalPos === 'top' ? -10 : 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: verticalPos === 'top' ? -10 : 10 }}
@@ -545,11 +918,11 @@ export default function MessagesPage() {
                                       [verticalPos === 'top' ? 'marginBottom' : 'marginTop']: '8px',
                                     }}
                       >
-                                  {msg.sender === 'me' && msg.text && (
+                                  {isMe && msg.text && (
                                     <button
                                       onClick={() => {
                                         setEditingMessageId(msg.id)
-                                        setEditText(msg.text)
+                                        setEditText(msg.text || '')
                                         setMessageMenuOpen(null)
                                       }}
                                       className="w-full px-4 py-2.5 text-left text-sm text-apple-primary hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 flex items-center space-x-2 transition-colors rounded-apple mx-1"
@@ -578,15 +951,17 @@ export default function MessagesPage() {
                                     <Smile className="w-4 h-4" />
                                     <span>Thả cảm xúc</span>
                                   </button>
-                                  {msg.sender === 'me' && (
+                                  {isMe && (
                                     <>
                                       <div className="h-px bg-apple-gray-200 dark:bg-apple-gray-800 my-1" />
                                       <button
-                                        onClick={() => {
-                                          setChatMessages(chatMessages.map(m => 
-                                            m.id === msg.id ? { ...m, isDeleted: true, text: '' } : m
-                                          ))
-                                          setMessageMenuOpen(null)
+                                        onClick={async () => {
+                                          try {
+                                            await deleteChatMessage(msg.id)
+                                            setMessageMenuOpen(null)
+                                          } catch (error) {
+                                            console.error('Error deleting message:', error)
+                                          }
                                         }}
                                         className="w-full px-4 py-2.5 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2 transition-colors rounded-apple mx-1"
                                       >
@@ -608,7 +983,7 @@ export default function MessagesPage() {
                           const messageEl = messageRefs.current.get(msg.id)
                           const containerEl = messagesContainerRef.current
                           let verticalPos = 'top' // 'top' hoặc 'bottom' - reaction picker thường hiện trên message
-                          let horizontalPos = msg.sender === 'me' ? 'right' : 'left'
+                          let horizontalPos = isMe ? 'right' : 'left'
                           
                           if (messageEl && containerEl) {
                             const messageRect = messageEl.getBoundingClientRect()
@@ -631,7 +1006,7 @@ export default function MessagesPage() {
                               // Nếu bubble ở gần phải (từ 70% trở đi) → picker hiện trái
                               // Nếu bubble ở gần trái (dưới 30%) → picker hiện phải
                               const bubblePositionX = ((bubbleLeft - containerLeft) / containerWidth) * 100
-                              if (msg.sender === 'me') {
+                              if (isMe) {
                                 // Tin nhắn của mình: bubble ở bên phải
                                 horizontalPos = bubblePositionX > 70 ? 'right' : 'left'
                               } else {
@@ -674,38 +1049,9 @@ export default function MessagesPage() {
                                   stiffness: 500, 
                                   damping: 15 
                                 }}
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation() // Ngăn event bubble lên để không trigger click outside
-                                  const existingReaction = chatMessages.find(m => m.id === msg.id)?.reactions?.find(r => r.emoji === emoji)
-                                  const isAdding = !existingReaction
-                                  
-                                  setChatMessages(chatMessages.map(m => {
-                                    if (m.id === msg.id) {
-                                      if (existingReaction) {
-                                        return {
-                                          ...m,
-                                          reactions: m.reactions?.filter(r => r.emoji !== emoji) || []
-                                        }
-                                      } else {
-                                        return {
-                                          ...m,
-                                          reactions: [
-                                            ...(m.reactions || []),
-                                            { emoji, users: ['Bạn'] }
-                                          ]
-                                        }
-                                      }
-                                    }
-                                    return m
-                                  }))
-                                  
-                                  // Hiệu ứng bounce khi thêm reaction thành công
-                                  if (isAdding) {
-                                    setTimeout(() => {
-                                      setChatMessages(prev => prev)
-                                    }, 100)
-                                  }
-                                  
+                                  await addChatReaction(msg.id, emoji)
                                   setReactionPickerOpen(null)
                                 }}
                                 className="p-2 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 rounded-apple transition-colors text-lg relative"
@@ -728,35 +1074,14 @@ export default function MessagesPage() {
                       </div>
                     </motion.div>
                   )
-                })}
-                {/* Typing Indicator */}
-                {typing && (
-                  <motion.div
-                    className="flex justify-start"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <div className="bg-white dark:bg-apple-gray-800 rounded-apple-lg rounded-bl-sm px-4 py-2">
-                      <div className="flex space-x-1">
-                        <motion.div
-                          className="w-2 h-2 bg-apple-tertiary rounded-full"
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                        />
-                        <motion.div
-                          className="w-2 h-2 bg-apple-tertiary rounded-full"
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                        />
-                        <motion.div
-                          className="w-2 h-2 bg-apple-tertiary rounded-full"
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
+                })) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-apple-secondary">Chưa có tin nhắn nào</p>
+                  </div>
+                )) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-apple-secondary">Chọn một cuộc trò chuyện để bắt đầu</p>
+                  </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -786,10 +1111,18 @@ export default function MessagesPage() {
                       <div className="flex items-center space-x-2 mb-1">
                         <Reply className="w-3 h-3 text-blue-500 flex-shrink-0" />
                         <p className="text-xs font-medium text-blue-500 truncate">
-                          {replyingTo.sender === 'me' ? 'Bạn' : (conversations.find((c) => c.id === selectedChat)?.user.name || 'Người khác')}
+                          {replyingTo.senderId === user?.uid 
+                            ? 'Bạn' 
+                            : (conversationsWithUser.find((c) => c.id === selectedChat || c.userId === selectedUserId)?.userData?.name || 'Người khác')}
                         </p>
                       </div>
-                      <p className="text-xs text-apple-tertiary truncate">{replyingTo.text}</p>
+                      <p className="text-xs text-apple-tertiary truncate">
+                        {replyingTo.text || 
+                          (replyingTo.fileUrl ? `📎 ${replyingTo.fileName || 'File'}` :
+                           replyingTo.imageUrl ? '📷 Ảnh' :
+                           replyingTo.voiceUrl ? `🎤 Tin nhắn thoại ${replyingTo.voiceDuration || 0}s` :
+                           'Tin nhắn')}
+                      </p>
                     </div>
                     <button
                       onClick={() => setReplyingTo(null)}
@@ -823,7 +1156,7 @@ export default function MessagesPage() {
                             className="relative group"
                           >
                             {preview.type === 'image' && preview.preview ? (
-                              <div className="relative w-32 h-32 rounded-apple overflow-hidden border border-apple-gray-200 dark:border-apple-gray-800">
+                              <div className="relative w-24 h-24 rounded-apple overflow-hidden border border-apple-gray-200 dark:border-apple-gray-800">
                                 <img src={preview.preview} alt="Preview" className="w-full h-full object-cover" />
                                 <button
                                   onClick={() => setPreviewFiles((prev) => prev.filter((_, i) => i !== index))}
@@ -833,19 +1166,21 @@ export default function MessagesPage() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="relative px-3 py-2 rounded-apple bg-apple-gray-100 dark:bg-apple-gray-800 flex items-center space-x-2" style={{ border: 'none' }}>
-                                <File className="w-4 h-4 text-apple-secondary" />
+                              <div className="relative px-3 py-2 rounded-apple bg-apple-gray-100 dark:bg-apple-gray-800 flex items-center space-x-2">
+                                <FileIcon className="w-4 h-4 text-apple-secondary flex-shrink-0" />
                                 <div className="min-w-0">
-                                  <p className="text-xs font-medium text-apple-primary truncate max-w-[150px]">
+                                  <p className="text-xs font-medium text-apple-primary truncate max-w-[120px]">
                                     {preview.file.name}
                                   </p>
                                   <p className="text-xs text-apple-tertiary">
-                                    {(preview.file.size / 1024).toFixed(1)} KB
-                      </p>
-                    </div>
+                                    {preview.file.size < 1024 * 1024 
+                                      ? `${(preview.file.size / 1024).toFixed(1)} KB`
+                                      : `${(preview.file.size / (1024 * 1024)).toFixed(2)} MB`}
+                                  </p>
+                                </div>
                                 <button
                                   onClick={() => setPreviewFiles((prev) => prev.filter((_, i) => i !== index))}
-                                  className="p-1 hover:bg-apple-gray-200 dark:hover:bg-apple-gray-700 rounded-full transition-colors"
+                                  className="p-1 hover:bg-apple-gray-200 dark:hover:bg-apple-gray-700 rounded-full transition-colors flex-shrink-0"
                                 >
                                   <XIcon className="w-3 h-3 text-apple-secondary" />
                                 </button>
@@ -862,7 +1197,7 @@ export default function MessagesPage() {
               {/* Message Input */}
               <div className="p-4 border-t border-apple-gray-200 dark:border-apple-gray-800 bg-white dark:bg-black">
                 {isRecording ? (
-                  <div className="flex items-center justify-between px-4 py-3 bg-red-50 dark:bg-red-900/20 rounded-apple-lg border-2 border-red-500">
+                  <div className="flex items-center justify-between px-4 py-2 bg-red-50 dark:bg-red-900/20 rounded-apple-lg border-2 border-red-500">
                     <div className="flex items-center space-x-3">
                       <motion.div
                         className="w-3 h-3 bg-red-500 rounded-full"
@@ -882,13 +1217,130 @@ export default function MessagesPage() {
                             clearInterval(recordingTimerRef.current)
                             recordingTimerRef.current = null
                           }
-                          setRecordingTime(0)
                         }
                       }}
-                      className="px-4 py-2 bg-red-500 text-white rounded-apple text-sm font-medium hover:bg-red-600 transition-colors"
+                      className="px-4 py-1.5 bg-red-500 text-white rounded-apple text-sm font-medium hover:bg-red-600 transition-colors"
                     >
-                      Dừng & Gửi
+                      Dừng
                     </button>
+                  </div>
+                ) : recordedAudio ? (
+                  <div className="flex items-center justify-between px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-apple-lg border-2 border-blue-500">
+                    <div className="flex items-center space-x-3">
+                      <Mic className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {Math.floor(recordedAudio.duration / 60)}:{String(recordedAudio.duration % 60).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <motion.button
+                        onClick={() => {
+                          if (recordingStreamRef.current) {
+                            recordingStreamRef.current.getTracks().forEach((track) => track.stop())
+                            recordingStreamRef.current = null
+                          }
+                          setRecordedAudio(null)
+                          setRecordingTime(0)
+                        }}
+                        className="p-2 rounded-apple bg-red-500 text-white hover:bg-red-600 transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        title="Hủy"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                      <motion.button
+                        onClick={async () => {
+                          setRecordedAudio(null)
+                          setRecordingTime(0)
+                          // Clear previous recording
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                            recordingStreamRef.current = stream
+                            const mediaRecorder = new MediaRecorder(stream)
+                            mediaRecorderRef.current = mediaRecorder
+                            audioChunksRef.current = []
+
+                            mediaRecorder.ondataavailable = (event) => {
+                              audioChunksRef.current.push(event.data)
+                            }
+
+                            mediaRecorder.onstop = async () => {
+                              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+                              
+                              if (recordingStreamRef.current) {
+                                recordingStreamRef.current.getTracks().forEach((track) => track.stop())
+                                recordingStreamRef.current = null
+                              }
+                              
+                              const audioUrl = URL.createObjectURL(audioBlob)
+                              const audio = new Audio(audioUrl)
+                              audio.onloadedmetadata = () => {
+                                const duration = Math.round(audio.duration)
+                                setRecordedAudio({ blob: audioBlob, duration })
+                                URL.revokeObjectURL(audioUrl)
+                              }
+                            }
+
+                            mediaRecorder.start()
+                            setIsRecording(true)
+                            setRecordingTime(0)
+
+                            // Clear any existing timer first
+                            if (recordingTimerRef.current) {
+                              clearInterval(recordingTimerRef.current)
+                              recordingTimerRef.current = null
+                            }
+                            
+                            recordingTimerRef.current = setInterval(() => {
+                              setRecordingTime((prev) => prev + 1)
+                            }, 1000) as ReturnType<typeof setInterval>
+                          } catch (error) {
+                            console.error('Error starting recording:', error)
+                            alert('Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.')
+                          }
+                        }}
+                        className="p-2 rounded-apple bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        title="Ghi lại"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </motion.button>
+                      <motion.button
+                        onClick={async () => {
+                          if (!recordedAudio || !selectedUserId || !user?.uid) return
+
+                          try {
+                            const voiceFile = new File([recordedAudio.blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
+                            const { smartUploadService } = await import('@/lib/services/smartUploadService')
+                            const conversationId = chatService.getConversationId(user.uid, selectedUserId)
+                            const uploadResult = await smartUploadService.upload(voiceFile, 'audio', {
+                              userId: user.uid,
+                              conversationId,
+                            })
+                            
+                            await sendChatMessage('', {
+                              type: 'voice',
+                              voiceUrl: uploadResult.url,
+                              voiceDuration: recordedAudio.duration,
+                            })
+                            
+                            setRecordedAudio(null)
+                            setRecordingTime(0)
+                          } catch (error) {
+                            console.error('Error sending voice message:', error)
+                            alert('Có lỗi khi gửi tin nhắn thoại')
+                          }
+                        }}
+                        className="p-2 rounded-apple bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        title="Gửi"
+                      >
+                        <Send className="w-4 h-4" />
+                      </motion.button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-end space-x-2">
@@ -902,7 +1354,7 @@ export default function MessagesPage() {
                         },
                         {
                           label: 'Chọn file',
-                          icon: <File className="w-4 h-4" />,
+                          icon: <FileIcon className="w-4 h-4" />,
                           onClick: () => fileInputRef.current?.click(),
                         },
                       ]}
@@ -948,7 +1400,15 @@ export default function MessagesPage() {
                       className="hidden"
                       onChange={(e) => {
                         const files = Array.from(e.target.files || [])
+                        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+                        
                         files.forEach((file) => {
+                          // Validate file size (max 5MB)
+                          if (file.size > MAX_FILE_SIZE) {
+                            alert(`File "${file.name}" quá lớn. Kích thước tối đa: 5MB`)
+                            return
+                          }
+                          
                           if (!file.type.startsWith('image/')) {
                             setPreviewFiles((prev) => [...prev, { type: 'file', file }])
                           }
@@ -963,45 +1423,58 @@ export default function MessagesPage() {
                     type="text"
                     placeholder="Nhập tin nhắn..."
                     value={message}
-                        onChange={(e) => {
-                          setMessage(e.target.value)
-                          if (e.target.value.trim()) {
-                            setTyping(true)
-                            setTimeout(() => setTyping(false), 2000)
-                          } else {
-                            setTyping(false)
-                          }
-                        }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey && (message.trim() || previewFiles.length > 0)) {
-                            const currentUser = conversations.find((c) => c.id === selectedChat)?.user
-                            const newMsg: Message = {
-                              id: Date.now(),
-                              text: message,
-                              sender: 'me',
-                              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-                              ...(replyingTo && {
-                                replyTo: {
-                                  id: replyingTo.id,
-                                  text: replyingTo.text,
-                                  sender: replyingTo.sender === 'me' ? 'Bạn' : (currentUser?.name || 'Người khác'),
-                                },
-                              }),
-                              ...(previewFiles[0]?.type === 'image' && { image: previewFiles[0].preview }),
-                              ...(previewFiles[0]?.type === 'file' && {
-                                file: {
-                                  name: previewFiles[0].file.name,
-                                  url: URL.createObjectURL(previewFiles[0].file),
-                                  size: previewFiles[0].file.size,
-                                },
-                              }),
+                          onChange={(e) => {
+                            setMessage(e.target.value)
+                          }}
+                        onKeyPress={async (e) => {
+                          if (e.key === 'Enter' && !e.shiftKey && (message.trim() || previewFiles.length > 0) && selectedUserId) {
+                            try {
+                              // Upload files if any
+                              let imageUrl: string | undefined
+                              let fileUrl: string | undefined
+                              let fileName: string | undefined
+                              let fileSize: number | undefined
+
+                              if (previewFiles[0] && user?.uid && selectedUserId) {
+                                const { smartUploadService } = await import('@/lib/services/smartUploadService')
+                                const conversationId = chatService.getConversationId(user.uid, selectedUserId)
+                                const uploadResult = await smartUploadService.upload(
+                                  previewFiles[0].file,
+                                  previewFiles[0].type === 'image' ? 'image' : 'file',
+                                  { userId: user.uid, conversationId }
+                                )
+                                
+                                if (uploadResult.type === 'image') {
+                                  imageUrl = uploadResult.url
+                                } else {
+                                  fileUrl = uploadResult.url
+                                  fileName = previewFiles[0].file.name
+                                  fileSize = previewFiles[0].file.size
+                                }
+                              }
+
+                              await sendChatMessage(message.trim(), {
+                                type: imageUrl ? 'image' : fileUrl ? 'file' : 'text',
+                                imageUrl,
+                                fileUrl,
+                                fileName,
+                                fileSize,
+                                replyToId: replyingTo?.id,
+                                replyToText: replyingTo?.text || 
+                                  (replyingTo?.fileUrl ? `📎 ${replyingTo.fileName || 'File'}` :
+                                   replyingTo?.imageUrl ? '📷 Ảnh' :
+                                   replyingTo?.voiceUrl ? `🎤 Tin nhắn thoại ${replyingTo.voiceDuration || 0}s` :
+                                   undefined),
+                              })
+                              
+                              setMessage('')
+                              setPreviewFiles([])
+                              updateTypingStatus(false).catch(console.error)
+                              setReplyingTo(null)
+                            } catch (error) {
+                              console.error('Error sending message:', error)
+                              alert('Có lỗi khi gửi tin nhắn')
                             }
-                            setChatMessages((prev) => [...prev, newMsg])
-                            setMessage('')
-                            setPreviewFiles([])
-                            setTyping(false)
-                            setReplyingTo(null)
-                            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
                           }
                         }}
                         className="w-full px-4 py-2 rounded-apple-lg bg-apple-gray-100 dark:bg-apple-gray-800 border border-apple-gray-200 dark:border-apple-gray-700 text-apple-primary placeholder:text-apple-tertiary focus:outline-none focus:ring-2 focus:ring-apple-gray-400 dark:focus:ring-apple-gray-600"
@@ -1012,35 +1485,56 @@ export default function MessagesPage() {
                     {message.trim() || previewFiles.length > 0 ? (
                   <motion.button
                         className="p-2 rounded-apple-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors flex-shrink-0"
-                        onClick={() => {
-                          const currentUser = conversations.find((c) => c.id === selectedChat)?.user
-                          const newMsg: Message = {
-                            id: Date.now(),
-                            text: message,
-                            sender: 'me',
-                            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-                            ...(replyingTo && {
-                              replyTo: {
-                                id: replyingTo.id,
-                                text: replyingTo.text,
-                                sender: replyingTo.sender === 'me' ? 'Bạn' : (currentUser?.name || 'Người khác'),
-                              },
-                            }),
-                            ...(previewFiles[0]?.type === 'image' && { image: previewFiles[0].preview }),
-                            ...(previewFiles[0]?.type === 'file' && {
-                              file: {
-                                name: previewFiles[0].file.name,
-                                url: URL.createObjectURL(previewFiles[0].file),
-                                size: previewFiles[0].file.size,
-                              },
-                            }),
+                        onClick={async () => {
+                          if (!selectedUserId) return
+                          
+                          try {
+                            // Upload files if any
+                            let imageUrl: string | undefined
+                            let fileUrl: string | undefined
+                            let fileName: string | undefined
+                            let fileSize: number | undefined
+
+                            if (previewFiles[0] && user?.uid) {
+                              const { smartUploadService } = await import('@/lib/services/smartUploadService')
+                              const conversationId = selectedUserId ? chatService.getConversationId(user.uid, selectedUserId) : undefined
+                              const uploadResult = await smartUploadService.upload(
+                                previewFiles[0].file,
+                                previewFiles[0].type === 'image' ? 'image' : 'file',
+                                { userId: user.uid, conversationId }
+                              )
+                              
+                              if (uploadResult.type === 'image') {
+                                imageUrl = uploadResult.url
+                              } else {
+                                fileUrl = uploadResult.url
+                                fileName = previewFiles[0].file.name
+                                fileSize = previewFiles[0].file.size
+                              }
+                            }
+
+                            await sendChatMessage(message.trim(), {
+                              type: imageUrl ? 'image' : fileUrl ? 'file' : 'text',
+                              imageUrl,
+                              fileUrl,
+                              fileName,
+                              fileSize,
+                              replyToId: replyingTo?.id,
+                              replyToText: replyingTo?.text || 
+                                (replyingTo?.fileUrl ? `📎 ${replyingTo.fileName || 'File'}` :
+                                 replyingTo?.imageUrl ? '📷 Ảnh' :
+                                 replyingTo?.voiceUrl ? `🎤 Tin nhắn thoại ${replyingTo.voiceDuration || 0}s` :
+                                 undefined),
+                            })
+                            
+                            setMessage('')
+                            setPreviewFiles([])
+                            updateTypingStatus(false).catch(console.error)
+                            setReplyingTo(null)
+                          } catch (error) {
+                            console.error('Error sending message:', error)
+                            alert('Có lỗi khi gửi tin nhắn')
                           }
-                          setChatMessages((prev) => [...prev, newMsg])
-                          setMessage('')
-                          setPreviewFiles([])
-                          setTyping(false)
-                          setReplyingTo(null)
-                          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
                         }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -1051,8 +1545,12 @@ export default function MessagesPage() {
                       <motion.button
                         className="p-2 rounded-apple-lg bg-apple-gray-100 dark:bg-apple-gray-800 hover:bg-apple-gray-200 dark:hover:bg-apple-gray-700 transition-colors flex-shrink-0"
                         onClick={async () => {
+                          // Clear previous recording
+                          setRecordedAudio(null)
+                          
                           try {
                             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                            recordingStreamRef.current = stream
                             const mediaRecorder = new MediaRecorder(stream)
                             mediaRecorderRef.current = mediaRecorder
                             audioChunksRef.current = []
@@ -1061,32 +1559,39 @@ export default function MessagesPage() {
                               audioChunksRef.current.push(event.data)
                             }
 
-                            mediaRecorder.onstop = () => {
+                            mediaRecorder.onstop = async () => {
                               const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+                              
+                              // Stop all tracks
+                              if (recordingStreamRef.current) {
+                                recordingStreamRef.current.getTracks().forEach((track) => track.stop())
+                                recordingStreamRef.current = null
+                              }
+                              
+                              // Get duration
                               const audioUrl = URL.createObjectURL(audioBlob)
                               const audio = new Audio(audioUrl)
                               audio.onloadedmetadata = () => {
                                 const duration = Math.round(audio.duration)
-                                const newMsg: Message = {
-                                  id: Date.now(),
-                                  text: '',
-                                  sender: 'me',
-                                  time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-                                  voice: { url: audioUrl, duration },
-                                }
-                                setChatMessages((prev) => [...prev, newMsg])
-                                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                                // Save recorded audio for review
+                                setRecordedAudio({ blob: audioBlob, duration })
+                                URL.revokeObjectURL(audioUrl)
                               }
-                              stream.getTracks().forEach((track) => track.stop())
                             }
 
                             mediaRecorder.start()
                             setIsRecording(true)
                             setRecordingTime(0)
 
+                            // Clear any existing timer first
+                            if (recordingTimerRef.current) {
+                              clearInterval(recordingTimerRef.current)
+                              recordingTimerRef.current = null
+                            }
+                            
                             recordingTimerRef.current = setInterval(() => {
                               setRecordingTime((prev) => prev + 1)
-                            }, 1000)
+                            }, 1000) as ReturnType<typeof setInterval>
                           } catch (error) {
                             console.error('Error starting recording:', error)
                             alert('Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.')
@@ -1128,7 +1633,28 @@ export default function MessagesPage() {
           />
         )}
       </AnimatePresence>
-    </GlobalLayout>
+      </GlobalLayout>
+    </ProtectedRoute>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <ProtectedRoute>
+        <GlobalLayout>
+          <div className="max-w-6xl mx-auto">
+            <AppleCard className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-16 bg-apple-gray-200 dark:bg-apple-gray-800 rounded-lg" />
+              </div>
+            </AppleCard>
+          </div>
+        </GlobalLayout>
+      </ProtectedRoute>
+    }>
+      <MessagesContent />
+    </Suspense>
   )
 }
 

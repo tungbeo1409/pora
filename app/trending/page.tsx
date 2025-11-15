@@ -1,58 +1,20 @@
 'use client'
 
 import { GlobalLayout } from '@/components/layout/GlobalLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AppleCard } from '@/components/ui/AppleCard'
 import { PostCard } from '@/components/post/PostCard'
 import { TrendingUp, Hash } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-const trendingTopics = [
-  { tag: '#TechNews', posts: '12.5K', trend: 'up' },
-  { tag: '#Design', posts: '8.2K', trend: 'up' },
-  { tag: '#Photography', posts: '6.7K', trend: 'down' },
-  { tag: '#Travel', posts: '5.1K', trend: 'up' },
-  { tag: '#Food', posts: '4.8K', trend: 'up' },
-]
+const trendingTopics: any[] = []
 
-const trendingPosts = [
-  {
-    id: 1,
-    author: {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      username: '@nguyenvana',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-    },
-    content: 'Xu hướng công nghệ mới nhất trong năm 2024! #TechNews',
-    image: 'https://picsum.photos/600/400?random=3',
-    likes: 1245,
-    comments: 132,
-    shares: 45,
-    timeAgo: '1 giờ trước',
-    liked: false,
-    saved: false,
-  },
-  {
-    id: 2,
-    author: {
-      id: 2,
-      name: 'Trần Thị B',
-      username: '@tranthib',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-    },
-    content: 'Thiết kế UI/UX đẹp nhất năm! #Design',
-    likes: 989,
-    comments: 78,
-    shares: 28,
-    timeAgo: '3 giờ trước',
-    liked: true,
-    saved: false,
-  },
-]
+const trendingPosts: any[] = []
 
 export default function TrendingPage() {
   return (
-    <GlobalLayout>
+    <ProtectedRoute>
+      <GlobalLayout>
       <div className="max-w-4xl mx-auto">
         <div>
           <AppleCard className="p-6 mb-6">
@@ -75,13 +37,20 @@ export default function TrendingPage() {
           </AppleCard>
         </div>
 
-        <div className="space-y-4">
-          {trendingPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </div>
+        {trendingPosts.length > 0 ? (
+          <div className="space-y-4">
+            {trendingPosts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        ) : (
+          <AppleCard className="p-6 text-center">
+            <p className="text-apple-secondary">Chưa có bài viết xu hướng nào</p>
+          </AppleCard>
+        )}
       </div>
-    </GlobalLayout>
+      </GlobalLayout>
+    </ProtectedRoute>
   )
 }
 

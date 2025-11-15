@@ -1,0 +1,89 @@
+{
+  "rules": {
+    "chats": {
+      ".read": "auth != null",
+      "$conversationId": {
+        "messages": {
+          ".read": "auth != null",
+          "$messageId": {
+            // Allow write for sender to create/edit/delete messages OR update reactions by sender/receiver
+            // For create: newData must have senderId == auth.uid
+            // For update: data must exist and data.senderId == auth.uid (for edit/delete) OR both sender/receiver can update reactions
+            ".write": "auth != null && ((!data.exists() && newData.child('senderId').val() == auth.uid) || (data.exists() && data.child('senderId').val() == auth.uid) || (data.exists() && data.hasChild('senderId') && data.hasChild('receiverId') && (data.child('senderId').val() == auth.uid || data.child('receiverId').val() == auth.uid) && newData.hasChild('reactions') && (!newData.hasChild('senderId') || newData.child('senderId').val() == data.child('senderId').val()) && (!newData.hasChild('receiverId') || newData.child('receiverId').val() == data.child('receiverId').val())))",
+            ".validate": "(newData.hasChildren(['senderId', 'receiverId', 'type', 'createdAt']) && newData.child('senderId').val() == auth.uid && newData.child('receiverId').val() != null && newData.child('receiverId').val() != auth.uid) || (data.exists() && newData.hasChild('reactions') && (!newData.hasChild('senderId') || newData.child('senderId').val() == data.child('senderId').val()) && (!newData.hasChild('receiverId') || newData.child('receiverId').val() == data.child('receiverId').val()))"
+          }
+        },
+        "metadata": {
+          ".read": "auth != null",
+          "$userId": {
+            ".read": "auth != null",
+            "lastMessage": {
+              ".write": "auth != null && ($userId == auth.uid || newData.hasChildren(['id', 'text', 'type']))"
+            },
+            "lastMessageTime": {
+              ".write": "auth != null"
+            },
+            "unreadCount": {
+              ".write": "auth != null"
+            },
+            "typing": {
+              ".read": "auth != null",
+              ".write": "auth != null && $userId == auth.uid"
+            }
+          }
+        }
+      }
+    },
+    "conversations": {
+      "$conversationId": {
+        "images": {
+          ".read": "auth != null",
+          "$imageId": {
+            ".write": "auth != null && newData.child('uploadedBy').val() == auth.uid"
+          }
+        },
+        "videos": {
+          ".read": "auth != null",
+          "$videoId": {
+            ".write": "auth != null && newData.child('uploadedBy').val() == auth.uid"
+          }
+        },
+        "audio": {
+          ".read": "auth != null",
+          "$audioId": {
+            ".write": "auth != null && newData.child('uploadedBy').val() == auth.uid"
+          }
+        }
+      }
+    },
+    "users": {
+      "$userId": {
+        "images": {
+          ".read": "auth != null",
+          "$imageId": {
+            ".write": "auth != null && $userId == auth.uid && newData.child('uploadedBy').val() == auth.uid"
+          }
+        },
+        "videos": {
+          ".read": "auth != null",
+          "$videoId": {
+            ".write": "auth != null && $userId == auth.uid && newData.child('uploadedBy').val() == auth.uid"
+          }
+        },
+        "audio": {
+          ".read": "auth != null",
+          "$audioId": {
+            ".write": "auth != null && $userId == auth.uid && newData.child('uploadedBy').val() == auth.uid"
+          }
+        }
+      }
+    },
+    "presence": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && $userId == auth.uid"
+      }
+    }
+  }
+}
+

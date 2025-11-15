@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, X, Share2 } from 'lucide-react'
 import { AppleButton } from './ui/AppleButton'
-import { getBasePath } from '@/lib/getBasePath'
+import { getIconPath } from '@/lib/iconPath'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -57,19 +57,19 @@ export function PWAInstaller() {
     
     // Listen for beforeinstallprompt event (Chrome/Edge Android & Desktop)
     const handleBeforeInstallPrompt = (e: Event) => {
+      // Only preventDefault if we want to show our custom prompt
+      // Don't prevent default on mobile - let browser show native prompt if available
+      if (!isMobile()) {
+        e.preventDefault()
+      }
       const promptEvent = e as BeforeInstallPromptEvent
       setDeferredPrompt(promptEvent)
-      
-      // Only preventDefault and show custom prompt if user hasn't dismissed it
-      // Don't prevent default on mobile - let browser show native prompt if available
       if (!dismissed) {
         // On desktop, show our custom prompt
         // On mobile, only show if it's iOS (Android will use native prompt)
         if (!isMobile() || isIOS()) {
-          e.preventDefault()
           setShowInstallPrompt(true)
         }
-        // On mobile Android, let browser show native prompt (don't preventDefault)
       }
     }
 
@@ -242,7 +242,7 @@ export function PWAInstaller() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 rounded-apple overflow-hidden flex-shrink-0">
-                  <img src={`${getBasePath()}/icon-192x192.png`} alt="Pora" className="w-full h-full object-cover" />
+                  <img src={getIconPath('/icon-192x192.png')} alt="Pora" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-apple-primary">Cài đặt Pora</h3>

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 
 interface OpenChat {
   id: number
+  userId?: string // Actual Firebase userId for chat
   user: {
     id: number
     name: string
@@ -63,6 +64,7 @@ export function MessagePopupManager({
               <MessagePopup
                 key={chat.id}
                 user={chat.user}
+                userId={chat.userId}
                 onClose={() => onCloseChat(chat.id)}
                 onMinimize={() => onMinimizeChat(chat.id)}
                 onCall={onCall ? (type) => onCall(chat.user, type) : undefined}

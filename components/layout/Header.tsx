@@ -3,13 +3,16 @@
 import { motion } from 'framer-motion'
 import { Search, Bell, MessageCircle, Home, User, Settings, Moon, Sun, MoreVertical, X } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTheme } from '@/components/ThemeProvider'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown'
-import { MessageDropdown, Message } from '@/components/messages/MessageDropdown'
+import { MessageDropdown } from '@/components/messages/MessageDropdown'
+import type { Message } from '@/contexts/MessageContext'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { useState } from 'react'
-import { getBasePath } from '@/lib/getBasePath'
+import { getIconPath } from '@/lib/iconPath'
+import { authService } from '@/lib/firebase/services/authService'
 
 interface HeaderProps {
   onOpenChat?: (message: Message) => void
@@ -18,6 +21,18 @@ interface HeaderProps {
 export function Header({ onOpenChat }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await authService.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Still redirect to login even if error
+      router.push('/login')
+    }
+  }
 
   return (
     <motion.header
@@ -29,9 +44,9 @@ export function Header({ onOpenChat }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-apple overflow-hidden transition-opacity hover:opacity-90">
-              <img src={`${getBasePath()}/icon-192x192.png`} alt="Pora" className="w-full h-full object-cover" />
+          <Link href="/" className="flex items-center space-x-2" suppressHydrationWarning>
+            <div className="w-8 h-8 rounded-apple overflow-hidden transition-opacity hover:opacity-90" suppressHydrationWarning>
+              <img src={getIconPath('/icon-192x192.png')} alt="Pora" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-semibold text-apple-primary hidden sm:block">
               Pora
@@ -65,7 +80,7 @@ export function Header({ onOpenChat }: HeaderProps) {
                 )}
               </button>
 
-              <Link href="/">
+              <Link href="/" suppressHydrationWarning>
                 <button className="p-2 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors duration-200">
                   <Home className="w-5 h-5 text-apple-secondary" />
                 </button>
@@ -75,8 +90,8 @@ export function Header({ onOpenChat }: HeaderProps) {
 
               <NotificationDropdown />
 
-              <Link href="/profile">
-                <Avatar src="https://i.pravatar.cc/150?img=5" size="sm" />
+              <Link href="/profile" suppressHydrationWarning>
+                <Avatar src="" size="sm" />
               </Link>
 
               <Dropdown
@@ -94,7 +109,7 @@ export function Header({ onOpenChat }: HeaderProps) {
                   {
                     label: 'Đăng xuất',
                     icon: <X className="w-4 h-4" />,
-                    onClick: () => console.log('Logout'),
+                    onClick: handleLogout,
                     danger: true,
                   },
                 ]}
@@ -125,8 +140,8 @@ export function Header({ onOpenChat }: HeaderProps) {
               </button>
               <MessageDropdown onOpenChat={onOpenChat} />
               <NotificationDropdown />
-              <Link href="/profile">
-                <Avatar src="https://i.pravatar.cc/150?img=5" size="sm" />
+              <Link href="/profile" suppressHydrationWarning>
+                <Avatar src="" size="sm" />
               </Link>
             </div>
           </div>

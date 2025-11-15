@@ -1,90 +1,34 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, UserPlus, Share2, X, Bell } from 'lucide-react'
+import { Heart, MessageCircle, UserPlus, Share2, X, Bell, Reply, Smartphone, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/lib/firebase/hooks/useAuth'
+import { useNotifications, formatNotificationTime, getNotificationIconInfo } from '@/lib/firebase/hooks/useNotifications'
+import { notificationService } from '@/lib/firebase/services/notificationService'
+import { useRouter } from 'next/navigation'
 
-interface Notification {
-  id: number
-  type: 'like' | 'comment' | 'follow' | 'share'
-  userId: number
-  user: {
-    name: string
-    avatar: string
-  }
-  action: string
-  message?: string
-  time: string
-  read: boolean
-  icon: any
-  color: string
+const iconMap: Record<string, any> = {
+  Heart,
+  MessageCircle,
+  Reply,
+  UserPlus,
+  Share2,
+  Smartphone,
+  UserCheck,
+  Bell,
 }
 
-const notifications: Notification[] = [
-  {
-    id: 1,
-    type: 'like',
-    userId: 1,
-    user: {
-      name: 'Nguyễn Văn A',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-    },
-    action: 'thích bài viết của bạn',
-    time: '5 phút trước',
-    read: false,
-    icon: Heart,
-    color: 'text-red-500',
-  },
-  {
-    id: 2,
-    type: 'comment',
-    userId: 2,
-    user: {
-      name: 'Trần Thị B',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-    },
-    action: 'đã bình luận bài viết của bạn',
-    time: '15 phút trước',
-    read: false,
-    icon: MessageCircle,
-    color: 'text-blue-500',
-  },
-  {
-    id: 3,
-    type: 'follow',
-    userId: 3,
-    user: {
-      name: 'Lê Văn C',
-      avatar: 'https://i.pravatar.cc/150?img=3',
-    },
-    action: 'đã theo dõi bạn',
-    time: '1 giờ trước',
-    read: true,
-    icon: UserPlus,
-    color: 'text-green-500',
-  },
-  {
-    id: 4,
-    type: 'share',
-    userId: 4,
-    user: {
-      name: 'Phạm Thị D',
-      avatar: 'https://i.pravatar.cc/150?img=4',
-    },
-    action: 'đã chia sẻ bài viết của bạn',
-    time: '2 giờ trước',
-    read: true,
-    icon: Share2,
-    color: 'text-purple-500',
-  },
-]
-
 export function NotificationDropdown() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const { notifications, unreadCount, loading } = useNotifications(user?.uid || null, {
+    limitCount: 10,
+    realtime: true,
+  })
   const [isOpen, setIsOpen] = useState(false)
-  const [notifs, setNotifs] = useState(notifications)
-  const unreadCount = notifs.filter((n) => !n.read).length
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -113,7 +57,14 @@ export function NotificationDropdown() {
       >
         <Bell className="w-5 h-5 text-apple-secondary" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <motion.span
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-black"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </motion.span>
         )}
       </motion.button>
 
@@ -136,47 +87,76 @@ export function NotificationDropdown() {
               </button>
             </div>
             <div className="divide-y divide-apple-gray-200 dark:divide-apple-gray-800">
-              {notifs.map((notification) => {
-                const Icon = notification.icon
-                return (
-                  <motion.div
-                    key={notification.id}
-                    className={`p-4 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 transition-colors cursor-pointer rounded-apple ${
-                      !notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                    }`}
-                    whileHover={{ x: 4 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                    onClick={() => {
-                      setNotifs(
-                        notifs.map((n) =>
-                          n.id === notification.id ? { ...n, read: true } : n
-                        )
-                      )
-                    }}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="relative flex-shrink-0">
-                        <Avatar src={notification.user.avatar} size="sm" />
-                        <div
-                          className={`absolute -bottom-1 -right-1 p-1 rounded-full bg-white dark:bg-black ${notification.color}`}
-                        >
-                          <Icon className="w-3 h-3" />
+              {loading ? (
+                <div className="p-8 text-center">
+                  <p className="text-sm text-apple-secondary">Đang tải...</p>
+                </div>
+              ) : notifications.length > 0 ? (
+                notifications.map((notification) => {
+                  const iconInfo = getNotificationIconInfo(notification.type)
+                  const Icon = iconMap[iconInfo.iconName] || Bell
+                  const handleClick = async () => {
+                    // Mark as read
+                    if (!notification.read && notification.id) {
+                      try {
+                        await notificationService.markAsRead(notification.id, false)
+                      } catch (error) {
+                        console.error('Error marking notification as read:', error)
+                      }
+                    }
+
+                    // Navigate based on targetType
+                    if (notification.targetType === 'post' && notification.targetId) {
+                      router.push(`/?post=${notification.targetId}`)
+                    } else if (notification.targetType === 'comment' && notification.targetId) {
+                      router.push(`/?comment=${notification.targetId}`)
+                    } else if (notification.targetType === 'user' && notification.targetId) {
+                      router.push(`/profile?user=${notification.targetId}`)
+                    }
+
+                    setIsOpen(false)
+                  }
+
+                  return (
+                    <motion.div
+                      key={notification.id}
+                      className={`p-4 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 transition-colors cursor-pointer rounded-apple ${
+                        !notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+                      }`}
+                      whileHover={{ x: 4 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      onClick={handleClick}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="relative flex-shrink-0">
+                          <Avatar src={notification.actorAvatar || ''} size="sm" />
+                          <div
+                            className={`absolute -bottom-1 -right-1 p-1 rounded-full bg-white dark:bg-black ${iconInfo.color}`}
+                          >
+                            <Icon className="w-3 h-3" />
+                          </div>
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-apple-primary leading-relaxed">
+                            <span className="font-semibold">{notification.actorName}</span>{' '}
+                            <span className="text-apple-secondary">{notification.message}</span>
+                          </p>
+                          <p className="text-xs text-apple-tertiary mt-1">
+                            {formatNotificationTime(notification.createdAt)}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-apple-primary leading-relaxed">
-                          <span className="font-semibold">{notification.user.name}</span>{' '}
-                          <span className="text-apple-secondary">{notification.action}</span>
-                        </p>
-                        <p className="text-xs text-apple-tertiary mt-1">{notification.time}</p>
-                      </div>
-                      {!notification.read && (
-                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                      )}
-                    </div>
-                  </motion.div>
-                )
-              })}
+                    </motion.div>
+                  )
+                })
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="text-sm text-apple-secondary">Chưa có thông báo nào</p>
+                </div>
+              )}
             </div>
             <div className="p-4 border-t border-apple-gray-200 dark:border-apple-gray-800 text-center">
               <Link

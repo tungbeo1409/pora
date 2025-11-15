@@ -5,10 +5,19 @@ import { Avatar } from '@/components/ui/Avatar'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { X, MessageCircle } from 'lucide-react'
+import { useConversations } from '@/lib/firebase/hooks/useChat'
+import { useAuth } from '@/lib/firebase/hooks/useAuth'
+import { userService } from '@/lib/firebase/services/userService'
+import { chatService } from '@/lib/firebase/services/chatService'
+import type { Conversation } from '@/lib/firebase/services/chatService'
+import type { Message as MessageContextType } from '@/contexts/MessageContext'
 
 export interface Message {
   id: number
+  conversationId?: string // Firebase conversationId for unique key
+  userId?: string // Firebase userId for chat
   user: {
+    id: number
     name: string
     username: string
     avatar: string
@@ -19,54 +28,117 @@ export interface Message {
   unread: number
 }
 
-const messages: Message[] = [
-  {
-    id: 1,
-    user: {
-      name: 'Nguyễn Văn A',
-      username: '@nguyenvana',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      online: true,
-    },
-    lastMessage: 'Cảm ơn bạn đã giúp đỡ!',
-    time: '2 phút trước',
-    unread: 2,
-  },
-  {
-    id: 2,
-    user: {
-      name: 'Trần Thị B',
-      username: '@tranthib',
-      avatar: 'https://i.pravatar.cc/150?img=2',
-      online: false,
-    },
-    lastMessage: 'Hẹn gặp lại vào tuần sau nhé',
-    time: '1 giờ trước',
-    unread: 0,
-  },
-  {
-    id: 3,
-    user: {
-      name: 'Lê Văn C',
-      username: '@levanc',
-      avatar: 'https://i.pravatar.cc/150?img=3',
-      online: true,
-    },
-    lastMessage: 'Dự án đang tiến triển tốt',
-    time: '3 giờ trước',
-    unread: 1,
-  },
-]
+interface ConversationWithUser extends Conversation {
+  userData?: {
+    id: string
+    name: string
+    username: string
+    avatar: string
+  }
+}
 
 interface MessageDropdownProps {
-  onOpenChat?: (message: Message) => void
+  onOpenChat?: (message: MessageContextType) => void
 }
 
 export function MessageDropdown({ onOpenChat }: MessageDropdownProps) {
+  const { user } = useAuth()
+  const { conversations, loading } = useConversations()
+  const [conversationsWithUser, setConversationsWithUser] = useState<ConversationWithUser[]>([])
+  const [onlineStatuses, setOnlineStatuses] = useState<{ [userId: string]: boolean }>({})
   const [isOpen, setIsOpen] = useState(false)
-  const [msgs, setMsgs] = useState(messages)
-  const unreadCount = msgs.reduce((sum, msg) => sum + msg.unread, 0)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const onlineStatusUnsubscribes = useRef<Map<string, () => void>>(new Map())
+
+  // Fetch user data for conversations
+  useEffect(() => {
+    if (!conversations.length) {
+      setConversationsWithUser([])
+      return
+    }
+
+    const fetchUsers = async () => {
+      const userIds = conversations.map((c) => c.userId)
+      const users = await userService.getByIds(userIds)
+      
+      const conversationsWithUsers = conversations.map((conv) => {
+        const userData = users.find((u) => u.id === conv.userId)
+        return {
+          ...conv,
+          userData: userData ? {
+            id: userData.id || '',
+            name: userData.name,
+            username: userData.username,
+            avatar: userData.avatar,
+          } : undefined,
+        }
+      })
+      
+      setConversationsWithUser(conversationsWithUsers)
+
+      // Listen to online status for each user
+      userIds.forEach((userId) => {
+        if (onlineStatusUnsubscribes.current.has(userId)) return
+        
+        const unsubscribe = chatService.listenToOnlineStatus(userId, (isOnline) => {
+          setOnlineStatuses((prev) => ({ ...prev, [userId]: isOnline }))
+        })
+        
+        onlineStatusUnsubscribes.current.set(userId, unsubscribe)
+      })
+    }
+
+    fetchUsers()
+
+    // Cleanup online status listeners
+    return () => {
+      onlineStatusUnsubscribes.current.forEach((unsub) => unsub())
+      onlineStatusUnsubscribes.current.clear()
+    }
+  }, [conversations])
+
+  // Convert conversations to Message format
+  const msgs: Message[] = conversationsWithUser.map((conv) => {
+    const isOnline = onlineStatuses[conv.userId] ?? false
+    
+    // Format last message preview
+    let lastMessageText = 'Chưa có tin nhắn'
+    if (conv.lastMessage) {
+      const lastMsg = conv.lastMessage
+      if (lastMsg.imageUrl) {
+        lastMessageText = '📷 Ảnh'
+      } else if (lastMsg.voiceUrl) {
+        lastMessageText = '🎤 Tin nhắn thoại'
+      } else if (lastMsg.fileUrl) {
+        lastMessageText = `📎 ${lastMsg.fileName || 'File'}`
+      } else if (lastMsg.text) {
+        lastMessageText = lastMsg.text
+      }
+    }
+    
+    const lastMessageTime = conv.lastMessageTime 
+      ? new Date(conv.lastMessageTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      : ''
+
+    const messageId = parseInt(conv.id.replace(/\D/g, '')) || Date.now()
+    return {
+      id: messageId,
+      conversationId: conv.id, // Keep original conversationId for unique key
+      userId: conv.userId,
+      user: {
+        id: messageId, // Add id to user to match MessageUser interface
+        name: conv.userData?.name || 'Người dùng',
+        username: conv.userData?.username || '',
+        avatar: conv.userData?.avatar || '',
+        online: isOnline,
+      },
+      lastMessage: lastMessageText,
+      time: lastMessageTime,
+      unread: conv.unreadCount || 0,
+    }
+  })
+
+  const unreadCount = msgs.reduce((sum, msg) => sum + msg.unread, 0)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -94,7 +166,14 @@ export function MessageDropdown({ onOpenChat }: MessageDropdownProps) {
       >
         <MessageCircle className="w-5 h-5 text-apple-secondary" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <motion.span
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-black"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </motion.span>
         )}
       </motion.button>
 
@@ -117,9 +196,26 @@ export function MessageDropdown({ onOpenChat }: MessageDropdownProps) {
               </button>
             </div>
             <div className="divide-y divide-apple-gray-200 dark:divide-apple-gray-800">
-              {msgs.map((message) => (
+              {loading ? (
+                <div className="p-8 text-center">
+                  <p className="text-apple-secondary text-sm">Đang tải...</p>
+                </div>
+              ) : msgs.length > 0 ? (
+                msgs
+                  .sort((a, b) => {
+                    // Sort by unread count first, then by time
+                    if (b.unread !== a.unread) {
+                      return b.unread - a.unread
+                    }
+                    // Sort by time (newest first)
+                    const timeA = a.time ? new Date(`1970-01-01 ${a.time}`).getTime() : 0
+                    const timeB = b.time ? new Date(`1970-01-01 ${b.time}`).getTime() : 0
+                    return timeB - timeA
+                  })
+                  .slice(0, 5) // Limit to 5 most recent conversations
+                  .map((message) => (
                 <motion.div
-                  key={message.id}
+                  key={(message as any).conversationId || message.userId || `msg-${message.id}`}
                   className={`p-4 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 transition-colors cursor-pointer rounded-apple ${
                     message.unread > 0
                       ? 'bg-blue-50/50 dark:bg-blue-900/10'
@@ -166,7 +262,12 @@ export function MessageDropdown({ onOpenChat }: MessageDropdownProps) {
                     </div>
                   </div>
                 </motion.div>
-              ))}
+                  ))
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="text-sm text-apple-secondary">Chưa có tin nhắn nào</p>
+                </div>
+              )}
             </div>
             <div className="p-4 border-t border-apple-gray-200 dark:border-apple-gray-800 text-center">
               <Link

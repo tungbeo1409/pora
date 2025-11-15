@@ -5,19 +5,9 @@ import { UserPlus, TrendingUp } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { AppleButton } from '@/components/ui/AppleButton'
 
-const suggestedUsers = [
-  { id: 1, name: 'Nguyễn Văn A', username: '@nguyenvana', avatar: 'https://i.pravatar.cc/150?img=1' },
-  { id: 2, name: 'Trần Thị B', username: '@tranthib', avatar: 'https://i.pravatar.cc/150?img=2' },
-  { id: 3, name: 'Lê Văn C', username: '@levanc', avatar: 'https://i.pravatar.cc/150?img=3' },
-  { id: 4, name: 'Phạm Thị D', username: '@phamthid', avatar: 'https://i.pravatar.cc/150?img=4' },
-]
+const suggestedUsers: any[] = []
 
-const trendingTopics = [
-  { tag: '#TechNews', posts: '12.5K' },
-  { tag: '#Design', posts: '8.2K' },
-  { tag: '#Photography', posts: '6.7K' },
-  { tag: '#Travel', posts: '5.1K' },
-]
+const trendingTopics: any[] = []
 
 export function RightSidebar() {
   return (
@@ -39,7 +29,7 @@ export function RightSidebar() {
           <h3 className="font-semibold text-apple-primary">Gợi ý kết bạn</h3>
         </div>
         <div className="space-y-3">
-          {suggestedUsers.map((user) => (
+          {suggestedUsers.length > 0 ? suggestedUsers.map((user) => (
             <div
               key={user.id}
               className="flex items-center justify-between transition-colors duration-200 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 rounded-apple p-2 -m-2"
@@ -55,7 +45,9 @@ export function RightSidebar() {
                 Theo dõi
               </AppleButton>
             </div>
-          ))}
+          )) : (
+            <p className="text-sm text-apple-secondary text-center py-4">Chưa có gợi ý</p>
+          )}
         </div>
       </motion.div>
 
@@ -71,7 +63,7 @@ export function RightSidebar() {
           <h3 className="font-semibold text-apple-primary">Xu hướng</h3>
         </div>
         <div className="space-y-3">
-          {trendingTopics.map((topic, index) => (
+          {trendingTopics.length > 0 ? trendingTopics.map((topic, index) => (
             <div
               key={topic.tag}
               className="flex items-center justify-between cursor-pointer group transition-colors duration-200 hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900 rounded-apple p-2 -m-2"
@@ -83,7 +75,9 @@ export function RightSidebar() {
                 <p className="text-xs text-apple-tertiary">{topic.posts} bài viết</p>
               </div>
             </div>
-          ))}
+          )) : (
+            <p className="text-sm text-apple-secondary text-center py-4">Chưa có xu hướng</p>
+          )}
         </div>
       </motion.div>
     </motion.aside>
