@@ -26,11 +26,13 @@ npm install
 # Chạy development server
 npm run dev
 
-# Build cho production
+# Build cho production (tạo static files trong thư mục out/)
 npm run build
 
-# Chạy production server
+# Chạy production server (static files)
 npm start
+# hoặc
+npm run serve
 ```
 
 Mở [http://localhost:3000](http://localhost:3000) trong trình duyệt.

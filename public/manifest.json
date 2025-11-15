@@ -1,0 +1,31 @@
+{
+  "name": "VnSocial - Mạng xã hội phong cách Apple",
+  "short_name": "VnSocial",
+  "description": "Mạng xã hội với thiết kế tối giản, sang trọng theo phong cách Apple",
+  "start_url": "/pora/",
+  "scope": "/pora/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pora/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pora/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "networking"],
+  "lang": "vi",
+  "dir": "ltr",
+  "screenshots": []
+}
+
+

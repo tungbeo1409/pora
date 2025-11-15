@@ -34,3 +34,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# PWA build artifacts (if needed, uncomment)
+# /public/icon-*.png
+# /public/manifest.json
+# /public/sw.js
+
+# Scripts output
+# /scripts/
+

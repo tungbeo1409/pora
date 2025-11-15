@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "next build && node scripts/copy-pwa-files.js",
+    "start": "node scripts/serve.js",
+    "serve": "node scripts/serve.js",
+    "serve:simple": "npx serve@latest out -p 3000 --single",
+    "lint": "next lint",
+    "copy-pwa": "node scripts/copy-pwa-files.js"
   },
   "dependencies": {
     "react": "^18.2.0",
