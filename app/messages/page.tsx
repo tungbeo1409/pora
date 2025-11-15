@@ -15,6 +15,7 @@ const conversations = [
   {
     id: 1,
     user: {
+      id: 1,
       name: 'Nguyễn Văn A',
       username: '@nguyenvana',
       avatar: 'https://i.pravatar.cc/150?img=1',
@@ -27,6 +28,7 @@ const conversations = [
   {
     id: 2,
     user: {
+      id: 2,
       name: 'Trần Thị B',
       username: '@tranthib',
       avatar: 'https://i.pravatar.cc/150?img=1',
@@ -39,6 +41,7 @@ const conversations = [
   {
     id: 3,
     user: {
+      id: 3,
       name: 'Lê Văn C',
       username: '@levanc',
       avatar: 'https://i.pravatar.cc/150?img=1',

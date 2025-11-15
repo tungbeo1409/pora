@@ -17,7 +17,7 @@ interface DropdownProps {
   isOpen: boolean
   onClose: () => void
   children: ReactNode
-  position?: 'left' | 'right' | 'center' | 'auto'
+  position?: 'left' | 'right' | 'center' | 'auto' | 'top'
 }
 
 export function Dropdown({ items, isOpen, onClose, children, position = 'auto' }: DropdownProps) {

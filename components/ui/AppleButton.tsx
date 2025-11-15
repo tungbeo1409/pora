@@ -11,6 +11,7 @@ interface AppleButtonProps {
   className?: string
   onClick?: () => void
   disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
 }
 
 export function AppleButton({
@@ -20,6 +21,7 @@ export function AppleButton({
   className,
   onClick,
   disabled = false,
+  type = 'button',
 }: AppleButtonProps) {
   const baseStyles = 'font-medium rounded-apple transition-all duration-200'
   
@@ -37,6 +39,7 @@ export function AppleButton({
 
   return (
     <motion.button
+      type={type}
       className={clsx(baseStyles, variants[variant], sizes[size], className)}
       onClick={onClick}
       disabled={disabled}
