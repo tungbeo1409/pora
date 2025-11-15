@@ -7,6 +7,7 @@ import { AppleCard } from '@/components/ui/AppleCard'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { getBasePath } from '@/lib/getBasePath'
 
 export default function ResetPasswordPage() {
   const [formData, setFormData] = useState({
@@ -37,7 +38,7 @@ export default function ResetPasswordPage() {
           <AppleCard className="p-8">
             <div className="flex justify-center mb-8">
               <div className="w-16 h-16 rounded-apple-lg overflow-hidden">
-                <img src="/icon-512x512.png" alt="Pora" className="w-full h-full object-cover" />
+                <img src={`${getBasePath()}/icon-512x512.png`} alt="Pora" className="w-full h-full object-cover" />
               </div>
             </div>
           </AppleCard>

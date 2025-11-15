@@ -9,6 +9,7 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 import { MessageDropdown, Message } from '@/components/messages/MessageDropdown'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { useState } from 'react'
+import { getBasePath } from '@/lib/getBasePath'
 
 interface HeaderProps {
   onOpenChat?: (message: Message) => void
@@ -30,7 +31,7 @@ export function Header({ onOpenChat }: HeaderProps) {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-apple overflow-hidden transition-opacity hover:opacity-90">
-              <img src="/icon-192x192.png" alt="Pora" className="w-full h-full object-cover" />
+              <img src={`${getBasePath()}/icon-192x192.png`} alt="Pora" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-semibold text-apple-primary hidden sm:block">
               Pora

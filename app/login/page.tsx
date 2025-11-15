@@ -6,6 +6,7 @@ import { AppleInput } from '@/components/ui/AppleInput'
 import { AppleCard } from '@/components/ui/AppleCard'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { getBasePath } from '@/lib/getBasePath'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -23,7 +24,7 @@ export default function LoginPage() {
           <AppleCard className="p-8">
             <div className="flex justify-center mb-8">
               <div className="w-16 h-16 rounded-apple-lg overflow-hidden">
-                <img src="/icon-512x512.png" alt="Pora" className="w-full h-full object-cover" />
+                <img src={`${getBasePath()}/icon-512x512.png`} alt="Pora" className="w-full h-full object-cover" />
               </div>
             </div>
           </AppleCard>
