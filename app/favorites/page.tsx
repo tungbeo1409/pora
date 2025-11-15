@@ -4,7 +4,6 @@ import { GlobalLayout } from '@/components/layout/GlobalLayout'
 import { AppleCard } from '@/components/ui/AppleCard'
 import { PostCard } from '@/components/post/PostCard'
 import { Heart } from 'lucide-react'
-import { motion } from 'framer-motion'
 
 const favoritePosts = [
   {
@@ -46,11 +45,7 @@ export default function FavoritesPage() {
   return (
     <GlobalLayout>
       <div className="max-w-2xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div>
           <AppleCard className="p-6 mb-6">
             <div className="flex items-center space-x-3 mb-2">
               <Heart className="w-6 h-6 text-red-500 fill-red-500" />
@@ -58,18 +53,11 @@ export default function FavoritesPage() {
             </div>
             <p className="text-apple-secondary">Bạn đã yêu thích {favoritePosts.length} bài viết</p>
           </AppleCard>
-        </motion.div>
+        </div>
 
         <div className="space-y-4">
-          {favoritePosts.map((post, index) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.1 }}
-            >
-              <PostCard post={post} />
-            </motion.div>
+          {favoritePosts.map((post) => (
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       </div>

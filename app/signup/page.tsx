@@ -5,7 +5,7 @@ import { AppleButton } from '@/components/ui/AppleButton'
 import { AppleInput } from '@/components/ui/AppleInput'
 import { AppleCard } from '@/components/ui/AppleCard'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -14,6 +14,27 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
   })
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-apple-gray-50 to-apple-gray-100 dark:from-black dark:to-apple-gray-900">
+        <div className="w-full max-w-md">
+          <AppleCard className="p-8">
+            <div className="flex justify-center mb-8">
+              <div className="w-16 h-16 rounded-apple-lg overflow-hidden">
+                <img src="/icon-512x512.png" alt="Pora" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          </AppleCard>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-apple-gray-50 to-apple-gray-100 dark:from-black dark:to-apple-gray-900">
@@ -31,8 +52,8 @@ export default function SignupPage() {
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }}
           >
-            <div className="w-16 h-16 rounded-apple-lg bg-apple-gray-900 dark:bg-white flex items-center justify-center">
-              <span className="text-white dark:text-black font-bold text-2xl">V</span>
+            <div className="w-16 h-16 rounded-apple-lg overflow-hidden">
+              <img src="/icon-512x512.png" alt="PORA" className="w-full h-full object-cover" />
             </div>
           </motion.div>
 
@@ -73,18 +94,18 @@ export default function SignupPage() {
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
             />
 
-            <label className="flex items-start space-x-2">
+            <label className="flex items-start space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                className="mt-1 w-4 h-4 rounded border-apple-gray-300 text-apple-gray-900 focus:ring-apple-gray-400"
+                className="mt-1 w-4 h-4 rounded border-apple-gray-300 dark:border-apple-gray-700 text-apple-gray-900 dark:text-white bg-white dark:bg-apple-gray-800 focus:ring-2 focus:ring-apple-gray-400 dark:focus:ring-apple-gray-600 transition-colors"
               />
               <span className="text-sm text-apple-secondary">
                 Tôi đồng ý với{' '}
-                <Link href="/terms" className="text-apple-gray-900 dark:text-apple-gray-100 hover:underline">
+                <Link href="/terms" className="text-blue-500 hover:underline transition-colors">
                   Điều khoản dịch vụ
                 </Link>{' '}
                 và{' '}
-                <Link href="/privacy" className="text-apple-gray-900 dark:text-apple-gray-100 hover:underline">
+                <Link href="/privacy" className="text-blue-500 hover:underline transition-colors">
                   Chính sách bảo mật
                 </Link>
               </span>
@@ -97,7 +118,7 @@ export default function SignupPage() {
             <div className="text-center">
               <p className="text-sm text-apple-secondary">
                 Đã có tài khoản?{' '}
-                <Link href="/login" className="text-apple-gray-900 dark:text-apple-gray-100 font-medium hover:underline">
+                <Link href="/login" className="text-blue-500 font-medium hover:underline transition-colors">
                   Đăng nhập
                 </Link>
               </p>

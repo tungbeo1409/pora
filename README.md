@@ -1,4 +1,4 @@
-# VnSocial - Mạng xã hội phong cách Apple
+# Pora - Mạng xã hội phong cách Apple
 
 Một mạng xã hội với thiết kế tối giản, sang trọng theo phong cách Apple, được xây dựng bằng Next.js, Tailwind CSS và Framer Motion.
 
@@ -40,7 +40,7 @@ Mở [http://localhost:3000](http://localhost:3000) trong trình duyệt.
 ## 📁 Cấu trúc dự án
 
 ```
-VnSocial/
+Pora/
 ├── app/                    # Next.js App Router
 │   ├── page.tsx           # Trang chủ
 │   ├── login/             # Trang đăng nhập

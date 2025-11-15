@@ -54,11 +54,7 @@ export default function TrendingPage() {
   return (
     <GlobalLayout>
       <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div>
           <AppleCard className="p-6 mb-6">
             <div className="flex items-center space-x-3 mb-4">
               <TrendingUp className="w-6 h-6 text-apple-secondary" />
@@ -66,31 +62,22 @@ export default function TrendingPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {trendingTopics.map((topic) => (
-                <motion.div
+                <div
                   key={topic.tag}
                   className="flex items-center space-x-2 px-4 py-2 rounded-apple-lg bg-apple-gray-100 dark:bg-apple-gray-800 hover:bg-apple-gray-200 dark:hover:bg-apple-gray-700 cursor-pointer transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                 >
                   <Hash className="w-4 h-4 text-apple-secondary" />
                   <span className="font-medium text-apple-primary">{topic.tag}</span>
                   <span className="text-sm text-apple-tertiary">{topic.posts}</span>
-                </motion.div>
+                </div>
               ))}
             </div>
           </AppleCard>
-        </motion.div>
+        </div>
 
         <div className="space-y-4">
-          {trendingPosts.map((post, index) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.1 }}
-            >
-              <PostCard post={post} />
-            </motion.div>
+          {trendingPosts.map((post) => (
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       </div>

@@ -33,7 +33,7 @@ export function Sidebar() {
             const isActive = pathname === item.href
 
             return (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href} prefetch={true}>
                 <div
                   className={clsx(
                     'flex items-center space-x-3 px-4 py-3 rounded-apple transition-all duration-200',

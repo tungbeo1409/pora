@@ -33,7 +33,7 @@ export function BottomNavigation() {
           const isActive = pathname === item.href
 
           return (
-            <Link key={item.href} href={item.href} className="flex-1 max-w-[20%] min-w-0">
+            <Link key={item.href} href={item.href} prefetch={true} className="flex-1 max-w-[20%] min-w-0">
               <div
                 className={clsx(
                   'flex flex-col items-center justify-center h-full rounded-apple transition-all duration-200 py-1.5',
@@ -42,8 +42,8 @@ export function BottomNavigation() {
                     : 'text-apple-tertiary'
                 )}
               >
-                <div className="relative mb-1">
-                  <Icon className={clsx('w-5 h-5 flex-shrink-0', isActive && 'text-blue-500')} />
+                <div className="relative">
+                  <Icon className={clsx('w-6 h-6 flex-shrink-0', isActive && 'text-blue-500')} />
                   {isActive && (
                     <motion.div
                       className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"
@@ -52,9 +52,6 @@ export function BottomNavigation() {
                     />
                   )}
                 </div>
-                <span className={clsx('text-[10px] font-medium truncate w-full text-center px-0.5', isActive && 'text-blue-500')}>
-                  {item.label}
-                </span>
               </div>
             </Link>
           )

@@ -29,11 +29,11 @@ export function Header({ onOpenChat }: HeaderProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-apple bg-apple-gray-900 dark:bg-white flex items-center justify-center transition-opacity hover:opacity-90">
-              <span className="text-white dark:text-black font-bold text-sm">V</span>
+            <div className="w-8 h-8 rounded-apple overflow-hidden transition-opacity hover:opacity-90">
+              <img src="/icon-192x192.png" alt="Pora" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-semibold text-apple-primary hidden sm:block">
-              VnSocial
+              Pora
             </span>
           </Link>
 

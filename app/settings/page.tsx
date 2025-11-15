@@ -5,7 +5,6 @@ import { AppleCard } from '@/components/ui/AppleCard'
 import { AppleInput } from '@/components/ui/AppleInput'
 import { AppleButton } from '@/components/ui/AppleButton'
 import { ChevronRight, Bell, Lock, Shield, Palette, Globe, User } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
 import { useState } from 'react'
 
@@ -65,27 +64,18 @@ export default function SettingsPage() {
   return (
     <GlobalLayout>
       <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div>
           <AppleCard className="p-6 mb-6">
             <h1 className="text-3xl font-bold text-apple-primary mb-2">Cài đặt</h1>
             <p className="text-apple-secondary">Quản lý tài khoản và tùy chọn của bạn</p>
           </AppleCard>
-        </motion.div>
+        </div>
 
         <div className="space-y-6">
-          {settingsSections.map((section, sectionIndex) => {
+          {settingsSections.map((section) => {
             const Icon = section.icon
             return (
-              <motion.div
-                key={section.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: sectionIndex * 0.1 }}
-              >
+              <div key={section.title}>
                 <AppleCard className="p-0 overflow-hidden">
                   <div className="p-4 border-b border-apple-gray-200 dark:border-apple-gray-800">
                     <div className="flex items-center space-x-2">
@@ -94,8 +84,8 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="divide-y divide-apple-gray-200 dark:divide-apple-gray-800">
-                    {section.items.map((item, itemIndex) => (
-                      <motion.a
+                    {section.items.map((item) => (
+                      <a
                         key={item.label}
                         href={item.href}
                         className={`flex items-center justify-between p-4 transition-colors ${
@@ -103,25 +93,19 @@ export default function SettingsPage() {
                             ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
                             : 'text-apple-primary hover:bg-apple-gray-50 dark:hover:bg-apple-gray-900'
                         }`}
-                        whileHover={{ x: 4 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       >
                         <span className="font-medium">{item.label}</span>
                         <ChevronRight className="w-5 h-5 text-apple-tertiary" />
-                      </motion.a>
+                      </a>
                     ))}
                   </div>
                 </AppleCard>
-              </motion.div>
+              </div>
             )
           })}
 
           {/* Quick Settings */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.5 }}
-          >
+          <div>
             <AppleCard className="p-6">
               <h2 className="font-semibold text-apple-primary mb-4">Cài đặt nhanh</h2>
               <div className="space-y-4">
@@ -169,7 +153,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </AppleCard>
-          </motion.div>
+          </div>
         </div>
       </div>
     </GlobalLayout>

@@ -83,19 +83,18 @@ export default function HomePage() {
   }, [])
 
   if (!mounted) {
-    return <GlobalLayout><div className="max-w-4xl mx-auto w-full" /></GlobalLayout>
+    return (
+      <GlobalLayout>
+        <div className="max-w-4xl mx-auto w-full" />
+      </GlobalLayout>
+    )
   }
 
   return (
     <GlobalLayout>
       <div className="max-w-4xl mx-auto w-full">
         {/* Stories */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div className="mb-6">
           <AppleCard className="p-4">
             <div className="flex space-x-4 overflow-x-auto scrollbar-hide">
               {stories.map((story) => (
@@ -103,15 +102,10 @@ export default function HomePage() {
               ))}
             </div>
           </AppleCard>
-        </motion.div>
+        </div>
 
         {/* Create Post */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.1 }}
-        >
+        <div className="mb-6">
           <AppleCard className="p-4">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-apple-gray-200 dark:bg-apple-gray-800 flex items-center justify-center">
@@ -125,33 +119,27 @@ export default function HomePage() {
               </button>
             </div>
             <div className="flex items-center justify-around pt-3 border-t border-apple-gray-200 dark:border-apple-gray-800">
-              <motion.button
+              <button
                 className="flex items-center space-x-2 text-apple-secondary hover:text-green-500 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 <ImageIcon className="w-5 h-5" />
                 <span className="text-sm">Ảnh</span>
-              </motion.button>
-              <motion.button
+              </button>
+              <button
                 className="flex items-center space-x-2 text-apple-secondary hover:text-red-500 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 <Video className="w-5 h-5" />
                 <span className="text-sm">Video</span>
-              </motion.button>
-              <motion.button
+              </button>
+              <button
                 className="flex items-center space-x-2 text-apple-secondary hover:text-yellow-500 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 <Smile className="w-5 h-5" />
                 <span className="text-sm">Cảm xúc</span>
-              </motion.button>
+              </button>
             </div>
           </AppleCard>
-        </motion.div>
+        </div>
 
         {/* Posts */}
         <div className="space-y-4">

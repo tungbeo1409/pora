@@ -4,7 +4,6 @@ import { GlobalLayout } from '@/components/layout/GlobalLayout'
 import { AppleCard } from '@/components/ui/AppleCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { Heart, MessageCircle, UserPlus, Share2 } from 'lucide-react'
-import { motion } from 'framer-motion'
 
 const notifications = [
   {
@@ -78,27 +77,18 @@ export default function NotificationsPage() {
   return (
     <GlobalLayout>
       <div className="max-w-2xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div>
           <AppleCard className="p-6 mb-4">
             <h1 className="text-2xl font-bold text-apple-primary mb-2">Thông báo</h1>
             <p className="text-apple-secondary">Bạn có {notifications.filter((n) => !n.read).length} thông báo mới</p>
           </AppleCard>
-        </motion.div>
+        </div>
 
         <div className="space-y-2">
-          {notifications.map((notification, index) => {
+          {notifications.map((notification) => {
             const Icon = notification.icon
             return (
-              <motion.div
-                key={notification.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.05 }}
-              >
+              <div key={notification.id}>
                 <AppleCard
                   className={`p-4 ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
                   hover
@@ -122,7 +112,7 @@ export default function NotificationsPage() {
                     )}
                   </div>
                 </AppleCard>
-              </motion.div>
+              </div>
             )
           })}
         </div>

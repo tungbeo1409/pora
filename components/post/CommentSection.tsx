@@ -171,7 +171,7 @@ export function CommentSection({ comments: initialComments, postId, showComments
           >
             {/* Comments List */}
             <motion.div 
-              className="space-y-3 max-h-96 overflow-y-auto scrollbar-hide"
+              className="space-y-3 max-h-96 overflow-y-auto overflow-x-visible scrollbar-hide relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
@@ -179,7 +179,7 @@ export function CommentSection({ comments: initialComments, postId, showComments
               {comments.map((comment, index) => (
                 <motion.div
                   key={comment.id}
-                  className="flex space-x-3"
+                  className={`flex space-x-3 ${dropdownOpen === comment.id ? 'relative z-[100]' : ''}`}
                   initial={{ opacity: 0, x: -20, y: 10 }}
                   animate={{ opacity: 1, x: 0, y: 0 }}
                   transition={{ 
@@ -193,7 +193,7 @@ export function CommentSection({ comments: initialComments, postId, showComments
                     <Avatar src={comment.author.avatar} size="sm" />
                   </Link>
                   <div className="flex-1 min-w-0">
-                    <div className="glass rounded-apple-lg p-3 mb-2 relative group">
+                    <div className={`glass rounded-apple-lg p-3 mb-2 relative group ${dropdownOpen === comment.id ? 'z-[100]' : ''}`}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center space-x-2 flex-1 min-w-0">
                           <Link href={`/profile?user=${comment.author.id}`} className="hover:underline">

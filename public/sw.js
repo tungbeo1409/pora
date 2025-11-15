@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vnsocial-v1'
+const CACHE_NAME = 'pora-v1'
 const urlsToCache = [
   '/pora/',
   '/pora/manifest.json',

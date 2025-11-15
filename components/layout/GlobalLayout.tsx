@@ -8,8 +8,9 @@ import { MessagePopupManager } from '@/components/messages/MessagePopupManager'
 import { CallModal } from '@/components/call/CallModal'
 import { VideoCallModal } from '@/components/call/VideoCallModal'
 import { AnimatePresence } from 'framer-motion'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Message as MessageType } from '@/components/messages/MessageDropdown'
+import { usePathname } from 'next/navigation'
 
 interface OpenChat {
   id: number
@@ -39,9 +40,22 @@ interface CallState {
 export function GlobalLayout({ children }: { children: React.ReactNode }) {
   const [openChats, setOpenChats] = useState<OpenChat[]>([])
   const [callState, setCallState] = useState<CallState | null>(null)
+  const pathname = usePathname()
+
+  // Đóng tất cả popup khi vào trang tin nhắn
+  useEffect(() => {
+    if (pathname === '/messages' || pathname?.startsWith('/messages/')) {
+      setOpenChats([])
+    }
+  }, [pathname])
 
   const handleOpenChat = useCallback((message: MessageType) => {
     if (typeof window === 'undefined') return
+    
+    // Chặn mở popup khi đang ở trang tin nhắn
+    if (pathname === '/messages' || pathname?.startsWith('/messages/')) {
+      return
+    }
     
     // Kiểm tra xem chat đã mở chưa
     const existingChat = openChats.find((chat) => chat.id === message.id)
@@ -73,7 +87,7 @@ export function GlobalLayout({ children }: { children: React.ReactNode }) {
     }
 
     setOpenChats([...openChats, newChat])
-  }, [openChats])
+  }, [openChats, pathname])
 
   const handleCloseChat = useCallback((chatId: number) => {
     setOpenChats(openChats.filter((chat) => chat.id !== chatId))
@@ -105,7 +119,7 @@ export function GlobalLayout({ children }: { children: React.ReactNode }) {
       <div className="max-w-[95vw] mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 lg:ml-72 xl:ml-80 xl:mr-80 min-w-0 pb-20 lg:pb-4">
+          <main className="flex-1 lg:ml-72 xl:ml-80 xl:mr-80 min-w-0 pb-20 lg:pb-4 mt-4 lg:mt-8">
             {children}
           </main>
           <RightSidebar />

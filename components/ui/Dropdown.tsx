@@ -50,24 +50,62 @@ export function Dropdown({ items, isOpen, onClose, children, position = 'auto' }
         const triggerRect = dropdownRef.current.getBoundingClientRect()
         const viewportHeight = window.innerHeight
         const viewportWidth = window.innerWidth
-
-        // Tính toán vị trí dọc - kiểm tra nếu màn hình nhỏ (mobile) thì hiển thị phía dưới
         const isMobile = window.innerWidth < 640 // sm breakpoint
+
+        // Tìm scrollable container cha gần nhất
+        let scrollableContainer: HTMLElement | null = dropdownRef.current.parentElement
+        while (scrollableContainer) {
+          const style = window.getComputedStyle(scrollableContainer)
+          if (style.overflow === 'auto' || style.overflow === 'scroll' || 
+              style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            break
+          }
+          scrollableContainer = scrollableContainer.parentElement
+        }
+
+        // Tính toán vị trí dọc
+        // Nếu position prop là 'top', luôn hiển thị phía trên
+        if (position === 'top') {
+          setCalculatedPosition('top')
+        } else {
         if (isMobile) {
           setCalculatedPosition('bottom')
         } else {
-          const spaceBelow = viewportHeight - triggerRect.bottom
-          const spaceAbove = triggerRect.top
+            // Tính toán dựa trên cả viewport và container scrollable
+            let spaceBelow = viewportHeight - triggerRect.bottom
+            let spaceAbove = triggerRect.top
+            
+            if (scrollableContainer) {
+              const containerRect = scrollableContainer.getBoundingClientRect()
+              const containerSpaceBelow = containerRect.bottom - triggerRect.bottom
+              const containerSpaceAbove = triggerRect.top - containerRect.top
+              
+              // Ưu tiên không gian trong container, nhưng cũng xem xét viewport
+              spaceBelow = Math.min(spaceBelow, containerSpaceBelow)
+              spaceAbove = Math.min(spaceAbove, containerSpaceAbove)
+            }
+            
           const menuHeight = 400 // ước tính chiều cao menu
           const shouldShowAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow
           setCalculatedPosition(shouldShowAbove ? 'top' : 'bottom')
+          }
         }
 
         // Tính toán vị trí ngang (chỉ khi position = 'auto')
         if (position === 'auto') {
-          const spaceRight = viewportWidth - triggerRect.right
-          const spaceLeft = triggerRect.left
+          let spaceRight = viewportWidth - triggerRect.right
+          let spaceLeft = triggerRect.left
           const menuWidth = 200 // ước tính chiều rộng menu
+
+          if (scrollableContainer) {
+            const containerRect = scrollableContainer.getBoundingClientRect()
+            const containerSpaceRight = containerRect.right - triggerRect.right
+            const containerSpaceLeft = triggerRect.left - containerRect.left
+            
+            // Ưu tiên không gian trong container
+            spaceRight = Math.min(spaceRight, containerSpaceRight)
+            spaceLeft = Math.min(spaceLeft, containerSpaceLeft)
+          }
 
           if (isMobile) {
             // Trên mobile, luôn hiển thị bên phải (hoặc left nếu gần cạnh phải)
@@ -114,17 +152,17 @@ export function Dropdown({ items, isOpen, onClose, children, position = 'auto' }
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef} style={{ zIndex: isOpen ? 99999 : 'auto' }}>
       {children}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             ref={menuRef}
             className={clsx(
-              'absolute z-[9999] min-w-[200px] max-w-[90vw] sm:max-w-none',
+              'absolute z-[99999] min-w-[200px] max-w-[90vw] sm:max-w-none',
               'glass-strong rounded-apple-lg shadow-apple-lg',
               'border border-apple-gray-200 dark:border-apple-gray-800',
-              'overflow-hidden',
+              'overflow-visible pr-2',
               getPositionClasses()
             )}
             initial={{ opacity: 0, y: calculatedPosition === 'top' ? 10 : -10, scale: 0.95 }}

@@ -1,9 +1,12 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development'
+
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
-  basePath: '/pora',
-  assetPrefix: '/pora',
+  // Chỉ dùng basePath trong production (khi build static)
+  // Trong dev mode, không dùng để dễ debug
+  ...(isDev ? {} : { basePath: '/pora', assetPrefix: '/pora' }),
   images: {
     unoptimized: true,
     remotePatterns: [

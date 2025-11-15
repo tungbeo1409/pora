@@ -61,11 +61,7 @@ export default function ProfilePage() {
     <GlobalLayout>
       <div className="max-w-4xl mx-auto">
         {/* Cover & Profile */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div>
           <AppleCard className="overflow-visible p-0 mb-6">
             {/* Cover */}
             <div className="relative h-48 sm:h-56 bg-gradient-to-br from-apple-gray-200 to-apple-gray-300 dark:from-apple-gray-800 dark:to-apple-gray-900 rounded-t-apple-lg overflow-hidden">
@@ -136,19 +132,12 @@ export default function ProfilePage() {
               </div>
             </div>
           </AppleCard>
-        </motion.div>
+        </div>
 
         {/* Posts */}
         <div className="space-y-4">
-          {userPosts.map((post, index) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.1 + index * 0.1 }}
-            >
-              <PostCard post={post} />
-            </motion.div>
+          {userPosts.map((post) => (
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       </div>

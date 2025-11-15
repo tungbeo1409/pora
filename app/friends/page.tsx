@@ -5,7 +5,6 @@ import { AppleCard } from '@/components/ui/AppleCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { AppleButton } from '@/components/ui/AppleButton'
 import { UserPlus, UserMinus, Search, MessageCircle } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { useState } from 'react'
 
 const friends = [
@@ -49,11 +48,7 @@ export default function FriendsPage() {
   return (
     <GlobalLayout>
       <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
+        <div>
           <AppleCard className="p-6 mb-6">
             <h1 className="text-3xl font-bold text-apple-primary mb-2">Bạn bè</h1>
             <p className="text-apple-secondary mb-4">Bạn có {friends.length} người bạn</p>
@@ -68,7 +63,7 @@ export default function FriendsPage() {
               />
             </div>
           </AppleCard>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {friends
@@ -76,13 +71,8 @@ export default function FriendsPage() {
               friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
               friend.username.toLowerCase().includes(searchQuery.toLowerCase())
             )
-            .map((friend, index) => (
-              <motion.div
-                key={friend.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.1 }}
-              >
+            .map((friend) => (
+              <div key={friend.id}>
                 <AppleCard className="p-6" hover>
                   <div className="flex items-start space-x-4">
                     <Avatar src={friend.avatar} size="lg" online={friend.online} />
@@ -105,7 +95,7 @@ export default function FriendsPage() {
                     </div>
                   </div>
                 </AppleCard>
-              </motion.div>
+              </div>
             ))}
         </div>
       </div>

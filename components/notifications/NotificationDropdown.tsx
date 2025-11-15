@@ -120,7 +120,7 @@ export function NotificationDropdown() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="absolute top-full right-0 mt-2 w-80 max-w-[90vw] sm:max-w-none max-h-96 overflow-y-auto scrollbar-hide z-[9999] glass-strong rounded-apple-lg shadow-apple-lg border border-apple-gray-200 dark:border-apple-gray-800"
+            className="absolute top-full right-0 mt-2 w-80 max-w-[90vw] sm:max-w-none max-h-96 overflow-y-auto scrollbar-hide z-[9999] glass-strong rounded-apple-lg shadow-apple-lg border border-apple-gray-200 dark:border-apple-gray-800 pr-2"
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
